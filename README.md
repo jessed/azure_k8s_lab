@@ -14,11 +14,11 @@ Ensure you update variables in the following files prior to deployment:
 **IMPORTANT**
 To use this Terraform Plan you must install the 'aks-preview' az extension and register to preview features.
 
-az extension add --name aks-preview
-- If already present, use "az extension update --name aks-preview"
-az feature register --namespace "Microsoft.ContainerService" --name "CustomNodeConfigPreview"
-az feature register --namespace "Microsoft.ContainerService" --name "PodSubnetPreview"
-az provider register -n Microsoft.ContainerService
+- az extension add --name aks-preview
+-- If already present, use "az extension update --name aks-preview"
+- az feature register --namespace "Microsoft.ContainerService" --name "CustomNodeConfigPreview"
+- az feature register --namespace "Microsoft.ContainerService" --name "PodSubnetPreview"
+- az provider register -n Microsoft.ContainerService
 
 
 ## Modules

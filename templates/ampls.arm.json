@@ -1,0 +1,33 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "private_link_scope_name": { "type": "String" },
+    "workspace_name": { "type": "String" }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "type": "Microsoft.Insights/privateLinkScopes",
+      "apiVersion": "2021-09-01",
+      "name": "[parameters('private_link_scope_name')]",
+      "location": "global",
+      "properties": { "accessModeSettings": { "queryAccessMode": "PrivateOnly", "ingestionAccessMode": "PrivateOnly" } }
+    },
+    {
+      "type": "Microsoft.Insights/privateLinkScopes/scopedresources",
+      "apiVersion": "2021-09-01",
+      "name": "[concat(parameters('private_link_scope_name'), '/', concat(parameters('workspace_name'), '-connection'))]",
+      "dependsOn": [ "[resourceId('microsoft.insights/privatelinkscopes', parameters('private_link_scope_name'))]" ],
+      "properties": {
+        "linkedResourceId": "[resourceId('microsoft.operationalinsights/workspaces', parameters('workspace_name'))]"
+      }
+    }
+  ],
+  "outputs": {
+    "resourceID": {
+      "type": "String",
+      "value": "[resourceId('microsoft.insights/privatelinkscopes', parameters('private_link_scope_name'))]"
+    }
+  }
+}

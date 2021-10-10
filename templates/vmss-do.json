@@ -1,0 +1,95 @@
+{
+  "schemaVersion": "1.7.0",
+  "class": "Device",
+  "async": true,
+  "label": "Onboard BIG-IP",
+  "Common": {
+    "class": "Tenant",
+    "hostname": "__HOSTNAME__",
+    "system": {
+      "class": "System",
+      "preserveOrigDhcpRoutes": true,
+      "tmshAuditLog": true,
+      "guiAuditLog": true,
+      "mcpAuditLog": "enable"
+    },
+    "LocalDCSyslog": {
+      "class": "SyslogRemoteServer",
+      "host": "127.0.0.1",
+      "remotePort": 6514
+    },
+    "myLicenses": {
+      "class": "License",
+      "bigIpUsername":  "${bigIpUser}",
+      "bigIpPassword":  "${bigIpPass}",
+      "bigIqHost":      "${bigIqHost}",
+      "bigIqUsername":  "${bigIqUsername}",
+      "bigIqPassword":  "${bigIqPassword}",
+      "licenseType":    "${bigIqLicenseType}",
+      "licensePool":    "${bigIqLicensePool}",
+      "unitOfMeasure":  "${bigIqUnitOfMeasure}",
+      "reachable":      false,
+      "hypervisor":     "${bigIqHypervisor}",
+      "overwrite":      true
+    },
+    "dbVars": {
+      "class": "DbVariables",
+      "ui.advisory.enabled": true,
+      "ui.advisory.color": "green",
+      "ui.advisory.text": "/Common/hostname",
+      "config.allow.rfc3927": "enable",
+      "log.tcpdump.level": "error",
+      "setup.run": false
+    },
+    "analytics": {
+      "offboxEnabled": true,
+      "offboxProtocol": "tcp",
+      "offboxAddresses": "127.0.0.1",
+      "offboxTcpPort": 6514
+    },
+    "myDns": {
+      "class": "DNS",
+      "nameServers": [ "168.63.129.16" ],
+      "search": [ "westus2.cloudapp.azure.com" ]
+    },
+    "myNtp": {
+      "class": "NTP",
+      "servers": [ "tick.ucla.edu" ],
+      "timezone": "America/Los_Angeles"
+    },
+    "myProvisioning": {
+      "class": "Provision",
+      "ltm": "nominal",
+      "avr": "nominal"
+    },
+    "external": {
+      "class": "VLAN",
+      "tag": 4094,
+      "mtu": 1500,
+      "interfaces": [
+        {
+          "name": "1.1", "tagged": false
+        }
+      ]
+    },
+    "ext-selfip": {
+      "class": "SelfIp",
+      "address": "__SELF_IP__/__NETMASK__",
+      "vlan": "external",
+      "allowService": "default",
+      "trafficGroup": "traffic-group-local-only"
+    },
+    "default": {
+      "class": "Route",
+      "gw": "${data_gateway}",
+      "network": "default",
+      "mtu": 1500
+    },
+    "logging": {
+      "class": "ManagementRoute",
+      "gw": "${mgmt_gateway}",
+      "network": "${log_subnet}",
+      "mtu": 1500
+    }
+  }
+}

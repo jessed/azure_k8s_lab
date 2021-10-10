@@ -1,0 +1,21 @@
+# default
+#.gitignore
+*.swp
+
+# Sensitive information we don't want on Github
+secrets.json
+
+# Terraform providers and state files
+.terraform*
+terraform.tfstate*
+terraform.errors
+
+# working backups and miscellaneous untracked files
+misc/
+misc_files/
+
+# post-ingestion template files
+work_tmp/
+
+# specific files I don't want on Github
+*.bkup

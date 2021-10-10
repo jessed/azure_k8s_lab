@@ -1,0 +1,32 @@
+#! /bin/bash
+
+#protocol="http"
+protocol="https"
+
+ple_ip='${ple_ip}'
+
+if [[ -n $1 ]]; then
+  host=$1
+else
+  echo "ERROR: No hostname provided"
+  echo "USAGE: $0 <hostname> [port]"
+  exit
+fi
+
+if [[ -n $2 ]]; then
+  port=$2
+else
+  port=4024
+fi
+
+# explicit proxy, FQDN in URI
+curl -x $ple_ip:3128 $${protocol}://$${host}:$${port}
+
+# explicit proxy, static Host header, fake host addr in URI
+curl -x $${ple_ip}:3128 -H "Host: $${host}:$${port}" $${protocol}://$${ple_ip}:$${port}
+
+
+# no explicit-proxy, extract FQDN from URI
+curl -H "Host: $host" http://$${ple_ip}:$${port}
+
+# vim: syntax=sh tabstop=2 tabstop=2 expandtab:

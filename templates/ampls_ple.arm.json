@@ -1,0 +1,382 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location":                     { "type": "string" },
+		"resourceGroup":								{ "type": "string" },
+    "privateEndpointName":          { "type": "string" },
+    "privateLinkResource":          { "type": "string" },
+    "targetSubResource":            { "type": "array"  },
+    "subnetId":                     { "type": "string" },
+    "subnetName":                   { "type": "string" },
+    "subnetCidr":                   { "type": "string" },
+    "virtualNetworkId":             { "type": "string" },
+    "virtualNetworkName":           { "type": "string" },
+    "virtualNetworkResourceGroup":  { "type": "string" },
+    "privateDnsDeploymentName":     { "type": "string" },
+    "location":                     { "type": "string" }
+  },
+  "resources": [
+    {
+      "location": "[parameters('location')]",
+      "name": "[parameters('privateEndpointName')]",
+      "type": "Microsoft.Network/privateEndpoints",
+      "apiVersion": "2020-06-01",
+      "properties": {
+        "subnet": { "id": "[concat(parameters('virtualNetworkId'), '/subnets/', parameters('subnetName'))]" },
+        "privateLinkServiceConnections": [
+          {
+            "name": "[parameters('privateEndpointName')]",
+            "properties": { "privateLinkServiceId": "[parameters('privateLinkResource')]", "groupIds": "[parameters('targetSubResource')]" }
+          }
+        ]
+      },
+      "tags": {},
+      "dependsOn": [ "[parameters('subnetName')]" ]
+    },
+    {
+      "apiVersion": "2020-06-01",
+      "name": "[parameters('subnetName')]",
+      "type": "Microsoft.Resources/deployments",
+      "resourceGroup": "[parameters('virtualNetworkResourceGroup')]",
+      "properties": {
+        "mode": "Incremental",
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "resources": [
+            {
+              "name": "[concat(parameters('virtualNetworkName'), '/', parameters('subnetName'))]",
+              "id": "[concat(parameters('virtualNetworkId'), '/subnets/', parameters('subnetName'))]",
+              "type": "Microsoft.Network/virtualNetworks/subnets",
+              "apiVersion": "2021-01-01",
+              "properties": {
+                "provisioningState": "Succeeded",
+                "addressPrefix": "[parameters('subnetCidr')]",
+                "delegations": [],
+                "privateEndpointNetworkPolicies": "Disabled",
+                "privateLinkServiceNetworkPolicies": "Enabled"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiVersion": "2020-06-01",
+      "name": "[parameters('privateDnsDeploymentName')]",
+      "type": "Microsoft.Resources/deployments",
+      "dependsOn": [ "[parameters('privateEndpointName')]" ],
+      "properties": {
+        "mode": "Incremental",
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "resources": [
+            {
+              "apiVersion": "2020-06-01",
+              "name": "PrivateDnsZone-ampls_monitor",
+              "type": "Microsoft.Resources/deployments",
+              "subscriptionId": "0f92c295-b01d-47ab-a709-1868040254df",
+              "resourceGroup": "[parameters('resourceGroup')]",
+              "properties": {
+                "mode": "Incremental",
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "resources": [
+                    { "type": "Microsoft.Network/privateDnsZones", "apiVersion": "2020-06-01", "name": "privatelink.monitor.azure.com", "location": "[parameters('location')]", "tags": {}, "properties": {} }
+                  ]
+                }
+              }
+            },
+            {
+              "apiVersion": "2020-06-01",
+              "name": "PrivateDnsZone-ampls_oms",
+              "type": "Microsoft.Resources/deployments",
+              "subscriptionId": "0f92c295-b01d-47ab-a709-1868040254df",
+              "resourceGroup": "[parameters('resourceGroup')]",
+              "properties": {
+                "mode": "Incremental",
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "resources": [
+                    { "type": "Microsoft.Network/privateDnsZones", "apiVersion": "2020-06-01", "name": "privatelink.oms.opinsights.azure.com", "location": "[parameters('location')]", "tags": {}, "properties": {} }
+                  ]
+                }
+              }
+            },
+            {
+              "apiVersion": "2020-06-01",
+              "name": "PrivateDnsZone-ampls_ods",
+              "type": "Microsoft.Resources/deployments",
+              "subscriptionId": "0f92c295-b01d-47ab-a709-1868040254df",
+              "resourceGroup": "[parameters('resourceGroup')]",
+              "properties": {
+                "mode": "Incremental",
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "resources": [
+                    { "type": "Microsoft.Network/privateDnsZones", "apiVersion": "2020-06-01", "name": "privatelink.ods.opinsights.azure.com", "location": "[parameters('location')]", "tags": {}, "properties": {} }
+                  ]
+                }
+              }
+            },
+            {
+              "apiVersion": "2020-06-01",
+              "name": "PrivateDnsZone-ampls_agentsvc",
+              "type": "Microsoft.Resources/deployments",
+              "subscriptionId": "0f92c295-b01d-47ab-a709-1868040254df",
+              "resourceGroup": "[parameters('resourceGroup')]",
+              "properties": {
+                "mode": "Incremental",
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "resources": [
+                    { "type": "Microsoft.Network/privateDnsZones", "apiVersion": "2020-06-01", "name": "privatelink.agentsvc.azure-automation.net", "location": "[parameters('location')]", "tags": {}, "properties": {} }
+                  ]
+                }
+              }
+            },
+            {
+              "apiVersion": "2020-06-01",
+              "name": "PrivateDnsZone-ampls_blob",
+              "type": "Microsoft.Resources/deployments",
+              "subscriptionId": "0f92c295-b01d-47ab-a709-1868040254df",
+              "resourceGroup": "[parameters('resourceGroup')]",
+              "properties": {
+                "mode": "Incremental",
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "resources": [
+                    { "type": "Microsoft.Network/privateDnsZones", "apiVersion": "2020-06-01", "name": "privatelink.blob.core.windows.net", "location": "[parameters('location')]", "tags": {}, "properties": {} }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiVersion": "2020-06-01",
+      "name": "VirtualNetworkLink-20210927144954",
+      "type": "Microsoft.Resources/deployments",
+      "dependsOn": [
+        "[parameters('privateDnsDeploymentName')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "resources": [
+            {
+              "apiVersion": "2020-06-01",
+              "name": "VirtualNetworklink-b984c696-46e8-41f2-bb86-f9db156320bc",
+              "type": "Microsoft.Resources/deployments",
+              "subscriptionId": "0f92c295-b01d-47ab-a709-1868040254df",
+              "resourceGroup": "[parameters('resourceGroup')]",
+              "properties": {
+                "mode": "Incremental",
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "resources": [
+                    {
+                      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+                      "apiVersion": "2020-06-01",
+                      "name": "[concat('privatelink.monitor.azure.com', '/', uniqueString(parameters('virtualNetworkId')))]",
+                      "location": "[parameters('location')]",
+                      "properties": {
+                        "virtualNetwork": {
+                          "id": "[parameters('virtualNetworkId')]"
+                        },
+                        "registrationEnabled": false
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "apiVersion": "2020-06-01",
+              "name": "VirtualNetworklink-b984c696-46e8-41f2-bb86-f9db156320bd",
+              "type": "Microsoft.Resources/deployments",
+              "subscriptionId": "0f92c295-b01d-47ab-a709-1868040254df",
+              "resourceGroup": "[parameters('resourceGroup')]",
+              "properties": {
+                "mode": "Incremental",
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "resources": [
+                    {
+                      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+                      "apiVersion": "2020-06-01",
+                      "name": "[concat('privatelink.oms.opinsights.azure.com', '/', uniqueString(parameters('virtualNetworkId')))]",
+                      "location": "[parameters('location')]",
+                      "properties": {
+                        "virtualNetwork": {
+                          "id": "[parameters('virtualNetworkId')]"
+                        },
+                        "registrationEnabled": false
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "apiVersion": "2020-06-01",
+              "name": "VirtualNetworklink-b984c696-46e8-41f2-bb86-f9db156320be",
+              "type": "Microsoft.Resources/deployments",
+              "subscriptionId": "0f92c295-b01d-47ab-a709-1868040254df",
+              "resourceGroup": "[parameters('resourceGroup')]",
+              "properties": {
+                "mode": "Incremental",
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "resources": [
+                    {
+                      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+                      "apiVersion": "2020-06-01",
+                      "name": "[concat('privatelink.ods.opinsights.azure.com', '/', uniqueString(parameters('virtualNetworkId')))]",
+                      "location": "[parameters('location')]",
+                      "properties": {
+                        "virtualNetwork": {
+                          "id": "[parameters('virtualNetworkId')]"
+                        },
+                        "registrationEnabled": false
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "apiVersion": "2020-06-01",
+              "name": "VirtualNetworklink-b984c696-46e8-41f2-bb86-f9db156320bf",
+              "type": "Microsoft.Resources/deployments",
+              "subscriptionId": "0f92c295-b01d-47ab-a709-1868040254df",
+              "resourceGroup": "[parameters('resourceGroup')]",
+              "properties": {
+                "mode": "Incremental",
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "resources": [
+                    {
+                      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+                      "apiVersion": "2020-06-01",
+                      "name": "[concat('privatelink.agentsvc.azure-automation.net', '/', uniqueString(parameters('virtualNetworkId')))]",
+                      "location": "[parameters('location')]",
+                      "properties": {
+                        "virtualNetwork": {
+                          "id": "[parameters('virtualNetworkId')]"
+                        },
+                        "registrationEnabled": false
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "apiVersion": "2020-06-01",
+              "name": "VirtualNetworklink-b984c696-46e8-41f2-bb86-f9db156320c0",
+              "type": "Microsoft.Resources/deployments",
+              "subscriptionId": "0f92c295-b01d-47ab-a709-1868040254df",
+              "resourceGroup": "[parameters('resourceGroup')]",
+              "properties": {
+                "mode": "Incremental",
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "resources": [
+                    {
+                      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+                      "apiVersion": "2020-06-01",
+                      "name": "[concat('privatelink.blob.core.windows.net', '/', uniqueString(parameters('virtualNetworkId')))]",
+                      "location": "[parameters('location')]",
+                      "properties": {
+                        "virtualNetwork": {
+                          "id": "[parameters('virtualNetworkId')]"
+                        },
+                        "registrationEnabled": false
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiVersion": "2020-06-01",
+      "name": "DnsZoneGroup-20210927144954",
+      "type": "Microsoft.Resources/deployments",
+      "resourceGroup": "[parameters('resourceGroup')]",
+      "dependsOn": [
+        "[parameters('privateEndpointName')]",
+        "[parameters('privateDnsDeploymentName')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "resources": [
+            {
+              "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+              "apiVersion": "2020-03-01",
+              "name": "[concat(parameters('privateEndpointName'), '/', 'default')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "privateDnsZoneConfigs": [
+                  {
+                    "name": "privatelink-monitor-azure-com",
+                    "properties": {
+                      "privateDnsZoneId": "[concat(resourceGroup().id, '/providers/Microsoft.Network/privateDnsZones/privatelink.monitor.azure.com')]"
+                    }
+                  },
+                  {
+                    "name": "privatelink-oms-opinsights-azure-com",
+                    "properties": {
+                      "privateDnsZoneId": "[concat(resourceGroup().id, '/providers/Microsoft.Network/privateDnsZones/privatelink.oms.opinsights.azure.com')]"
+                    }
+                  },
+                  {
+                    "name": "privatelink-ods-opinsights-azure-com",
+                    "properties": {
+                      "privateDnsZoneId": "[concat(resourceGroup().id, '/providers/Microsoft.Network/privateDnsZones/privatelink.ods.opinsights.azure.com')]"
+                    }
+                  },
+                  {
+                    "name": "privatelink-agentsvc-azure-automation-net",
+                    "properties": {
+                      "privateDnsZoneId": "[concat(resourceGroup().id, '/providers/Microsoft.Network/privateDnsZones/privatelink.agentsvc.azure-automation.net')]"
+                    }
+                  },
+                  {
+                    "name": "privatelink-blob-core-windows-net",
+                    "properties": {
+                      "privateDnsZoneId": "[concat(resourceGroup().id, '/providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net')]"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

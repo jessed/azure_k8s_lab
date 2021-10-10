@@ -1,0 +1,16 @@
+variable rg               {}
+variable vmss             {}
+variable lb_pool          {}
+variable mgmt_subnet      {}
+variable data_subnet      {}
+variable log_subnet       {}
+variable f5_common        {}
+variable metadata         {}
+variable analytics        {}
+variable law              {}
+variable mgmt_nsg         {}
+variable data_nsg         {}
+variable bigiq_host       {}
+variable bigiq            {}
+#variable uai             {}
+variable servers          {}

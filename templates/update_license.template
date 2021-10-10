@@ -1,0 +1,142 @@
+#! /bin/bash
+
+RETVAL=0
+LOG="$1_license.log"
+LOG_FILE="/shared/cloud_init/$LOG"
+test -f $LOG_FILE && { rm $LOG_FILE; }
+
+exec 1>$LOG_FILE 2>&1
+
+project='${project}'
+
+bigip_user='${bigIpUser}'
+bigip_pass='${bigIpPass}'
+bigiq_user='${bigIqUser}'
+bigiq_pass='${bigIqPass}'
+bigiq_host='${bigIqHost}'
+
+BIGIP_CREDS="$bigip_user:$bigip_pass"
+BIGIQ_CREDS="$bigiq_user:$bigiq_pass"
+
+bigiqLicUrl="mgmt/cm/device/tasks/licensing/pool/member-management"
+
+# Get the Big-IQ authentication token
+get_auth_token() {
+  # posted to Big-IQ to get a token
+  authData=$(printf '{"username":"%s","password":"%s","loginProviderName":"tmos"}' $bigiq_user $bigiq_pass)
+  #authData="{\"username\":\"$bigiq_user\",\"password\":\"$bigiq_pass\",\"loginProviderName\":\"tmos\"}"
+
+  # Get access token
+  accessToken=$(/bin/curl -sku $BIGIQ_CREDS -X POST https://$bigiq_host/mgmt/shared/authn/login -d "$authData" | /bin/jq -r '.token.token')
+  if [[ -z $accessToken || $accessToken =~ "null" ]]; then
+    /bin/echo "ERROR: Failed to get accessToken: ($accessToken)"
+    RETVAL=1
+    return $RETVAL
+  fi
+  echo "accessToken: $accessToken"
+  RETVAL=0
+  return $RETVAL
+}
+
+# Get the mac and mgmt addresses 
+get_addresses() {
+  baseMac=""
+
+  until [[ -n $baseMac && ! $baseMac =~ "null" ]]; do
+    bigipInfo=$(/bin/curl -sku $BIGIP_CREDS https://localhost/mgmt/tm/cm/device)
+    baseMac=$(echo $bigipInfo | jq -r '.items[0].baseMac')
+    sleep 1
+  done
+
+  if [[ -n $baseMac && ! $baseMac =~ "null" ]]; then
+    baseMac=$(/bin/echo $bigipInfo | /bin/jq -r '.items[0].baseMac' | tr [:upper:] [:lower:])
+    mgmtAddr=$(/bin/echo $bigipInfo | /bin/jq -r '.items[0].managementIp')
+  else
+    RETVAL=2
+    return $RETVAL
+  fi
+
+  echo "bigiq_host: $bigiq_host"
+  echo "baseMac: $baseMac"
+  echo "mgmtAddr: $mgmtAddr"
+}
+
+
+# Revoke license from Big-IQ
+stop() {
+  get_addresses
+
+  if [[ $RETVAL != 0 ]]; then
+    echo "Failed to get addresses"
+    echo "baseMac:  $baseMac"
+    echo "mgmtAddr: $mgmtAddr"
+    return $RETVAL
+  fi
+
+  revokeLicense=$(printf '"{licensePoolName":"azure_test","command":"revoke","assignmentType":"UNREACHABLE","addresss":"%s","macAddress":"%s"}' $mgmtAddr $baseMac)
+  #revokeLicense="{\"licensePoolName\":\"azure_test\",\"command\":\"revoke\",\"assignmentType\":\"UNREACHABLE\",\"addresss\":\"$mgmtAddr\",\"macAddress\":\"$baseMac\"}"
+  echo "baseMac:  $baseMac"
+  echo "mgmtAddr: $mgmtAddr"
+
+  # Get the bigiq auth token
+  get_auth_token
+
+  # populate X-F5-Auth-Token header
+  auth="X-F5-Auth-Token: $accessToken"
+
+  # Call Big-IQ to revoke license
+  /bin/echo "Revoking license"
+  /bin/curl -sk -H "$auth" -X POST https://$bigiq_host/$bigiqLicUrl -d "$revokeLicense" -o $LOG_FILE
+  RETVAL=$?
+
+  return $RETVAL
+}
+
+
+start() {
+  get_addresses
+
+  if [[ $RETVAL != 0 ]]; then
+    echo "Failed to get addresses"
+    echo "baseMac:  $baseMac"
+    echo "mgmtAddr: $mgmtAddr"
+    return $RETVAL
+  fi
+
+  getLicense=$(printf '{"licensePoolName":"azure_test","command":"assign","assignmentType":"UNREACHABLE","address":"%s","macAddress":"%s","hypervisor":"azure","tenant":"%s","overwrite":"true"}' $mgmtAddr $baseMac $project)
+#  getLicense="{\"licensePoolName\":\"azure_test\",\"command\":\"assign\",\"assignmentType\":\"UNREACHABLE\",\"address\":\"$mgmtAddr\",\"macAddress\":\"$baseMac\",\"hypervisor\":\"azure\",\"tenant\":\"NVA\","overwrite":"true"}"
+  echo "(startup) baseMac:  $baseMac"
+  echo "(startup) mgmtAddr: $mgmtAddr"
+
+  # Get the bigiq auth token
+  get_auth_token
+
+  # populate X-F5-Auth-Token header
+  auth="X-F5-Auth-Token: $accessToken"
+
+  # Call Big-IQ to get a license
+  /bin/echo "Retrieving license"
+  /bin/echo /bin/curl -sk -H "$auth" -X POST https://$bigiq_host/$bigiqLicUrl -d "$getLicense"
+  /bin/curl -sk -H "$auth" -X POST https://$bigiq_host/$bigiqLicUrl -d "$getLicense" -o $LOG_FILE
+
+  test -d /shared/cloud_cfg_files || { mkdir /shared/cloud_cfg_files; }
+  echo $bigipInfo > /shared/cloud_cfg_files/device_details.json
+
+  RETVAL=$?
+  return $RETVAL
+}
+
+
+case "$1" in
+  stop)
+    stop
+    ;;
+  start)
+    start
+    ;;
+esac
+
+exit $RETVAL
+
+
+# set vim: set syntax=sh tabstop=2 expandtab:

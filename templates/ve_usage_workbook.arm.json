@@ -1,0 +1,52 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "workbookDisplayName": {
+      "type": "string",
+      "defaultValue": "VE_CPU",
+      "metadata": { "description": "The friendly name for the workbook that is used in the Gallery or Saved List.  This name must be unique within a resource group." }
+    },
+    "workbookType": {
+      "type": "string",
+      "defaultValue": "workbook",
+      "metadata": { "description": "The gallery that the workbook will been shown under. Supported values include workbook, tsg, etc. Usually, this is 'workbook'" }
+    },
+    "workbookSourceId": {
+      "type": "string",
+      "metadata": { "description": "The id of resource instance to which the workbook will be associated" }
+    },
+    "workbookId": {
+      "type": "string",
+      "defaultValue": "[newGuid()]",
+      "metadata": { "description": "The unique guid for this workbook instance" }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "westus2"
+    }
+  },
+  "resources": [
+    {
+      "apiVersion": "2018-06-17-preview",
+      "name": "[parameters('workbookId')]",
+      "type": "microsoft.insights/workbooks",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [],
+      "kind": "shared",
+      "properties": {
+        "displayName": "[parameters('workbookDisplayName')]",
+        "serializedData": "{\"version\":\"Notebook/1.0\",\"items\":[{\"type\":9,\"content\":{\"version\":\"KqlParameterItem/1.0\",\"parameters\":[{\"id\":\"964ec444-3be4-4bde-8300-e83ffd0f7a4b\",\"version\":\"KqlParameterItem/1.0\",\"name\":\"TimeRange\",\"type\":4,\"description\":\"Set the time range for analysis\",\"isRequired\":true,\"value\":{\"durationMs\":3600000},\"typeSettings\":{\"selectableValues\":[{\"durationMs\":3600000},{\"durationMs\":43200000},{\"durationMs\":86400000},{\"durationMs\":259200000},{\"durationMs\":604800000},{\"durationMs\":2592000000}],\"allowCustom\":true},\"timeContext\":{\"durationMs\":86400000}}],\"style\":\"above\",\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\"},\"name\":\"parameters - 1\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"F5Telemetry_system_CL\\n| make-series tmmCpu = percentile(tmmCpu_d, 95) default = 0 on TimeGenerated from {TimeRange:start} to {TimeRange:end} step {TimeRange:grain} by hostname_s\\n| join kind = inner (F5Telemetry_system_CL\\n    | make-series sysCpu = percentile(cpu_d, 95) default = 0 on TimeGenerated from {TimeRange:start} to {TimeRange:end} step {TimeRange:grain} by hostname_s\\n    ) on hostname_s\\n| join kind = inner (F5Telemetry_system_CL\\n    | make-series tmmMemory = percentile(tmmMemory_d, 95) on TimeGenerated from {TimeRange:start} to {TimeRange:end} step {TimeRange:grain} by hostname_s\\n    ) on hostname_s\\n| project-away TimeGenerated, TimeGenerated1, hostname_s1, hostname_s2, TimeGenerated2\\n\",\"size\":0,\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\",\"visualization\":\"table\",\"gridSettings\":{\"formatters\":[{\"columnMatch\":\"tmmCpu\",\"formatter\":9,\"formatOptions\":{\"min\":60,\"max\":80,\"palette\":\"greenRed\"},\"numberFormat\":{\"unit\":1,\"options\":{\"style\":\"decimal\"}}},{\"columnMatch\":\"sysCpu\",\"formatter\":9,\"formatOptions\":{\"min\":60,\"max\":80,\"palette\":\"greenRed\"},\"numberFormat\":{\"unit\":1,\"options\":{\"style\":\"decimal\"}}},{\"columnMatch\":\"tmmMemory\",\"formatter\":9,\"formatOptions\":{\"min\":50,\"max\":70,\"palette\":\"greenRed\"},\"numberFormat\":{\"unit\":1,\"options\":{\"style\":\"decimal\"}}}]}},\"name\":\"VE Utilization\"}],\"isLocked\":false,\"fallbackResourceIds\":[\"[parameters('workbookSourceId')]\"]}",
+        "version": "1.0",
+        "sourceId": "[parameters('workbookSourceId')]",
+        "category": "[parameters('workbookType')]"
+      }
+    }
+  ],
+  "outputs": {
+    "workbookId": {
+      "type": "string",
+      "value": "[resourceId( 'microsoft.insights/workbooks', parameters('workbookId'))]"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+[Unit]
+Description=Get license on startup and revoke license on shutdown/reboot
+After=multi-user.target
+Requires=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/etc/rc.d/init.d/f5_update_license.bash start
+ExecStop=/etc/rc.d/init.d/f5_update_license.bash stop
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target shutdown.target reboot.target halt.target

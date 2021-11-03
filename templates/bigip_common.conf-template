@@ -1,0 +1,100 @@
+
+
+sys icall handler periodic /Common/termination_check {
+  interval 60
+  script /Common/termination_check
+}
+
+sys icall script /Common/termination_check {
+  app-service none
+  definition {
+  # This iCall script checks for termination events and, if found
+  # disables new connections by disabling the health-check virtual-server
+
+  set headers           "Metadata:true"
+  set instanceMetadata  "http://169.254.169.254/metadata/instance?api-version=2021-02-01"
+  set eventMetadata     "http://169.254.169.254/metadata/scheduledevents?api-version=2020-07-01"
+
+  set eventType   {.Events[0].EventType}
+  set eventHosts  {.Events[0].Resources[]}
+  set nameFilter  {.compute.name}
+
+
+  set eventType  [exec curl -0s -H $headers $eventMetadata | jq -r $eventType]
+
+  if { $eventType == "Terminate" } {
+    set myName     [exec curl -0s -H $headers $instanceMetadata | jq -r $nameFilter]
+    set eventHosts [exec curl -0s -H $headers $eventMetadata | jq -r $eventsHosts]
+
+    foreach {target} $eventHosts {
+      if { $target == $myName } {
+        exec tmsh modify ltm virtual vs00-health_check disabled
+      }
+    }
+  }
+  }
+  description none
+  events none
+}
+
+sys icall handler periodic /Common/cfg_update {
+	interval 300
+	script /Common/cfg_update
+}
+
+sys icall script cfg_update {
+  app-service none
+  definition {
+  # vim: syntax=tcl shiftwidth=2 tabstop=2 softtabstop=2 expandtab:
+	# Get self-IP
+	set self_ip   [lindex [split [lindex [split [tmsh::list net self one-line] " "] 5] "/"] 0]
+  set pool_cfg  [tmsh::list ltm pool one-line]
+  set partition "prod"
+  
+  # remote config file name
+  set remoteCfgFile "bigip_prod.conf"
+  
+  #set localCfgFile "/shared/bigip.conf"
+  set localCfgFile "bigip.conf"
+  
+  set cfgUrl    "https://mvmltm.blob.core.windows.net/f5-bigip/$remoteCfgFile"
+  
+  set tokenUrl  {http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://storage.azure.com/}
+  set tokenHdrs "-HMetadata:true"
+  
+  # Retrieve token to access storage account
+  set storageToken [exec curl -0s $tokenHdrs $tokenUrl | jq -r ".access_token"]
+  
+  # Create headers to be used when retrieving file from storage account
+  set stHdr01 "x-ms-version:2017-11-09"
+  set stHdr02 "Authorization: Bearer $storageToken"
+  
+  # Retrieve bigip.conf from storage account
+  #puts "curl -0s -H \"$stHdr01\" -H \"$stHdr02\" $cfgUrl -o $localCfgFile"
+  exec curl -0s -H "$stHdr01" -H "$stHdr02" $cfgUrl -o $localCfgFile
+  
+  # Update virtual-server address to match self-ip
+  exec sed -i  "s/__VS_ADDR__/$self_ip/" $localCfgFile
+  
+  # Determine if there are any changes between the current and previous version
+  if {[catch {exec diff $localCfgFile ${localCfgFile}.bkup} err]} {
+    # files are different, load new file
+    puts "Configuration changed, backing up existing bigip.conf and loading new config"
+    file copy -force /config/partitions/$partition/bigip.conf /config/partitions/$partition/bigip.conf.auto_bkup
+    file copy -force $localCfgFile ${localCfgFile}.bkup
+    file copy -force $localCfgFile /config/partitions/$partition/bigip.conf
+    # load new configuration
+    tmsh::load sys config
+  } else {
+    # file is the same as the current version
+    puts "Configuration unchanged, exiting"
+    file delete $localCfgFile
+  }
+  
+  # Save configuration
+  tmsh::save sys config
+  }
+  description none
+  events none
+}
+

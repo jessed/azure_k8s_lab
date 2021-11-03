@@ -1,4 +1,25 @@
-https://docs.microsoft.com/en-us/azure/virtual-machine-scale-sets/virtual-machine-scale-sets-terminate-notification
+VMSS REST API Operations
 
-https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/linux_virtual_machine_scale_set
+https://docs.microsoft.com/en-us/rest/api/compute/virtual-machine-scale-set-vms
+https://docs.microsoft.com/en-us/rest/api/compute/virtual-machine-scale-sets
 
+Azure Built-in Roles
+https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#compute
+
+Azure REST API
+https://docs.microsoft.com/en-us/rest/api/azure/
+
+
+Kusto Query (network throughput)
+
+let domain = '.westus2.cloudapp.azure.com';
+F5Telemetry_system_CL
+| top 100 by TimeGenerated desc
+| sort by TimeGenerated asc
+| extend host = trim_end(domain,hostname_s)
+| extend clientBitsIn       = toint((tmmTraffic_clientSideTraffic_bitsIn_d - prev(tmmTraffic_clientSideTraffic_bitsIn_d)) / 60)
+| extend clientBitsOut      = toint((tmmTraffic_clientSideTraffic_bitsOut_d - prev(tmmTraffic_clientSideTraffic_bitsOut_d)) / 60)
+| extend serverBitsIn       = toint((tmmTraffic_serverSideTraffic_bitsIn_d  - prev(tmmTraffic_serverSideTraffic_bitsIn_d)) / 60)
+| extend serverBitsOut      = toint((tmmTraffic_serverSideTraffic_bitsOut_d - prev(tmmTraffic_serverSideTraffic_bitsOut_d)) / 60)
+| sort by TimeGenerated desc
+| project TimeGenerated, host, clientBitsIn, clientBitsOut, serverBitsIn, serverBitsOut

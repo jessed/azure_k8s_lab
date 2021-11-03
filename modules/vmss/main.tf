@@ -1,17 +1,10 @@
-# Create VMSS and associated components
-
-
-/*
-# Create storage account for boot diagnostics
-resource "azurerm_storage_account" "vmss_storage" {
-  name                            = var.vmss.storage_name
-  resource_group_name             = var.rg.name
-  location                        = var.rg.location
-  account_tier                    = "Standard"
-  account_replication_type        = "LRS"
+# Accept EULA
+resource "azurerm_marketplace_agreement" "f5_bigip" {
+  count                     = var.vmss.accept_eula == true ? 1 : 0
+  publisher                 = var.vmss.publisher
+  offer                     = var.vmss.use_paygo == true ? var.vmss.paygo-offer : var.vmss.byol-product
+  plan                      = var.vmss.use_paygo == true ? var.vmss.paygo-plan : var.vmss.byol-plan
 }
-*/
-
 
 # Create VMSS
 resource "azurerm_linux_virtual_machine_scale_set" "bigip" {
@@ -26,9 +19,16 @@ resource "azurerm_linux_virtual_machine_scale_set" "bigip" {
   admin_username                  = var.f5_common.bigip_user
   custom_data                     = base64encode(local_file.bigip_onboard.content)
 
+  # Uncomment to enable boot diagnostics
 #  boot_diagnostics {
-#    storage_account_uri           = azurerm_storage_account.vmss_storage.primary_blob_endpoint
+#    storage_account_uri           = var.storage.primary_blob_endpoint
 #  }
+
+  # A valid identity name must be provided in secrets.json
+  identity {
+    type                          = var.uai.id != "" ? "UserAssigned" : "SystemAssigned"
+    identity_ids                  = var.uai.id != "" ? [var.uai.id] : [""]
+  }
 
   admin_ssh_key {
     username                      = var.f5_common.bigip_user
@@ -36,21 +36,21 @@ resource "azurerm_linux_virtual_machine_scale_set" "bigip" {
   }
 
   terminate_notification {
-    enabled                       = true
-    timeout                       = "PT10M"
+    enabled                       = var.vmss.use_terminate_notification
+    timeout                       = var.vmss.terminate_wait_time
   }
 
   source_image_reference {
     publisher                     = var.vmss.publisher
-    offer                         = var.vmss.product
-    sku                           = var.vmss.sku
     version                       = var.vmss.f5ver
+    offer                         = var.vmss.use_paygo == true ? var.vmss.paygo-product : var.vmss.byol-product
+    sku                           = var.vmss.use_paygo == true ? var.vmss.paygo-sku : var.vmss.byol-sku
   }
 
   plan {
     publisher                     = var.vmss.publisher
-    product                       = var.vmss.product
-    name                          = var.vmss.sku
+    product                       = var.vmss.use_paygo == true ? var.vmss.paygo-product : var.vmss.byol-product
+    name                          = var.vmss.use_paygo == true ? var.vmss.paygo-sku : var.vmss.byol-sku
   }
 
   os_disk {
@@ -76,7 +76,7 @@ resource "azurerm_linux_virtual_machine_scale_set" "bigip" {
     name                          = "data"
     primary                       = false
     network_security_group_id     = var.data_nsg.id
-    enable_accelerated_networking = true
+    enable_accelerated_networking = var.vmss.accel_net
 
     ip_configuration {
       name                        = "primary"

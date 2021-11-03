@@ -1,2 +1,3 @@
-variable rg_name    {}
+variable rg         {}
 variable uai_name   {}
+variable storage    {}

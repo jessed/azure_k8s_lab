@@ -1,1 +1,1 @@
-output "out" { value = data.azurerm_user_assigned_identity.uai }
+output "out" { value = azurerm_user_assigned_identity.uai }

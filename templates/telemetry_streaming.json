@@ -2,7 +2,7 @@
   "class": "Telemetry",
   "My_System": {
       "class": "Telemetry_System",
-      "systemPoller": { "interval": 60 }
+      "systemPoller": { "interval": 60, "enable": false }
   },
   "My_Listener": {
       "class": "Telemetry_Listener",

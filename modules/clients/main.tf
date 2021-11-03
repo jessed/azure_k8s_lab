@@ -1,5 +1,33 @@
 # All resources required for client
 
+## VNET
+resource "azurerm_virtual_network" "vnet" {
+  name                  = var.client.vnet.name
+  address_space         = [var.client.vnet.cidr]
+  resource_group_name   = var.rg.name
+  location              = var.rg.location
+}
+
+# create mgmt subnet
+resource "azurerm_subnet" "mgmt_subnet" {
+  name                  = format("%s-mgmt", var.client.vnet.name)
+  address_prefixes      = [cidrsubnet(var.client.vnet.cidr, 8, 0)]
+  resource_group_name   = var.rg.name
+  virtual_network_name  = azurerm_virtual_network.vnet.name
+  service_endpoints     = ["Microsoft.Storage"]
+}
+
+# create data subnet
+resource "azurerm_subnet" "data_subnet" {
+  name                  = format("%s-data", var.client.vnet.name)
+  address_prefixes      = [cidrsubnet(var.client.vnet.cidr, 8, 10)]
+  resource_group_name   = var.rg.name
+  virtual_network_name  = azurerm_virtual_network.vnet.name
+  service_endpoints     = ["Microsoft.Storage"]
+
+  enforce_private_link_endpoint_network_policies = true
+}
+
 # Create Public IP
 resource "azurerm_public_ip" "node_public_ip" {
   count                           = var.client.node.count
@@ -18,7 +46,7 @@ resource "azurerm_network_interface" "node_nic" {
 
   ip_configuration {
     name                          = "primary"
-    subnet_id                     = var.mgmt_subnet.id
+    subnet_id                     = azurerm_subnet.data_subnet.id
     public_ip_address_id          = azurerm_public_ip.node_public_ip.*.id[count.index]
     private_ip_address_allocation = "Dynamic"
   }
@@ -44,6 +72,11 @@ resource "azurerm_linux_virtual_machine" "host" {
   disable_password_authentication = true
 
   custom_data                     = base64gzip(local_file.linux_host_init.content)
+
+  identity {
+    type                          = var.uai.id != "" ? "UserAssigned" : "SystemAssigned"
+    identity_ids                  = var.uai.id != "" ? [var.uai.id] : [""]
+  }
 
   os_disk {
     name                          = format("${var.client.node.prefix}%02d_disk", count.index+1)
@@ -76,14 +109,4 @@ resource "local_file" "linux_host_init" {
   })
   filename                        = "${path.root}/work_tmp/linux_host_init.bash"
 }
-
-/*
-resource "local_file" "test_script" {
-  content = templatefile("${path.root}/templates/tests.bash.template", {
-    ple_ip                        = azurerm_private_endpoint.bigip_ple.private_service_connection[0].private_ip_address
-  })
-  filename                        = "${path.root}/work_tmp/tests.bash"
-}
-*/
-
 

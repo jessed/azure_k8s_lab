@@ -25,7 +25,7 @@ resource "azurerm_lb" "lb" {
 }
 
 resource "azurerm_lb_probe" "nva_probe" {
-  name                            = "port_443"
+  name                            = "port_65000"
   resource_group_name             = var.rg.name
   loadbalancer_id                 = azurerm_lb.lb.id
   port                            = 65000

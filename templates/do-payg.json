@@ -5,27 +5,27 @@
   "label": "Onboard BIG-IP",
   "Common": {
     "class": "Tenant",
-    "hostname": "${local_host}",
-    "myLicenses": {
-      "class": "License",
-      "bigIpUsername":  "${bigIpUser}",
-      "bigIpPassword":  "${bigIpPass}",
-      "bigIqHost":      "${bigIqHost}",
-      "bigIqUsername":  "${bigIqUsername}",
-      "bigIqPassword":  "${bigIqPassword}",
-      "licenseType":    "${bigIqLicenseType}",
-      "licensePool":    "${bigIqLicensePool}",
-      "unitOfMeasure":  "${bigIqUnitOfMeasure}",
-      "reachable":      false,
-      "hypervisor":     "${bigIqHypervisor}",
-      "overwrite":      true
+    "hostname": "__HOSTNAME__",
+    "system": {
+      "class": "System",
+      "preserveOrigDhcpRoutes": true,
+      "tmshAuditLog": true,
+      "guiAuditLog": true,
+      "mcpAuditLog": "enable"
+    },
+    "LocalDCSyslog": {
+      "class": "SyslogRemoteServer",
+      "host": "127.0.0.1",
+      "remotePort": 6514
     },
     "dbVars": {
       "class": "DbVariables",
       "ui.advisory.enabled": true,
       "ui.advisory.color": "green",
       "ui.advisory.text": "/Common/hostname",
-      "config.allow.rfc3927": "enable"
+      "config.allow.rfc3927": "enable",
+      "log.tcpdump.level": "error",
+      "setup.run": false
     },
     "analytics": {
       "offboxEnabled": true,
@@ -45,9 +45,7 @@
     },
     "myProvisioning": {
       "class": "Provision",
-      "ltm": "nominal",
-      "afm": "nominal",
-      "avr": "nominal"
+      "ltm": "nominal"
     },
     "external": {
       "class": "VLAN",
@@ -61,7 +59,7 @@
     },
     "ext-selfip": {
       "class": "SelfIp",
-      "address": "${local_selfip}/24",
+      "address": "__SELF_IP__/__NETMASK__",
       "vlan": "external",
       "allowService": "default",
       "trafficGroup": "traffic-group-local-only"
@@ -70,6 +68,12 @@
       "class": "Route",
       "gw": "${data_gateway}",
       "network": "default",
+      "mtu": 1500
+    },
+    "logging": {
+      "class": "ManagementRoute",
+      "gw": "${mgmt_gateway}",
+      "network": "${log_subnet}",
       "mtu": 1500
     }
   }

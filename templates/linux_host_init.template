@@ -9,6 +9,9 @@ LOG_FILE=/tmp/cloud_init/startup_script.log
 mkdir $workDir
 ln -s $workDir /home/azadmin/
 
+cp $0 $workDir/cloud_init.bash
+chmod 755 $workDir/cloud_init.bash
+
 # Update packages
 DEBIAN_FRONTEND=noninteractive apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get -qq upgrade
@@ -26,8 +29,10 @@ storageToken=$(curl -0s $tokenHdr $tokenUrl | jq -r ".access_token")
 acrHdr01="x-ms-version: 2017-11-09"
 acrHdr02="Authorization: Bearer $storageToken"
 
-test -d /etc/sysconfig/network-scripts && { ln -s /etc/sysconfig/network-scripts /home/azadmin/; }
-test -d /etc/netplan                   && { ln -s /etc/netplan /home/azadmin/; }
+#test -d /etc/sysconfig/network-scripts && { ln -s /etc/sysconfig/network-scripts /home/azadmin/; }
+#test -d /etc/netplan                   && { ln -s /etc/netplan /home/azadmin/; }
+test -d /etc/nginx                     && { ln -s /etc/nginx /home/azadmin/; }
+test -d /var/log/ngins                 && { ln -s /var/log/nginx /home/azadmin/logs/; }
 
 ## sudoers
 new_sudoers="sudoers"
@@ -36,19 +41,6 @@ echo -n $sudoers_b64 | base64 -d > $workDir/$new_sudoers
 chmod 440 $workDir/$new_sudoers
 chown root.root $workDir/$new_sudoers
 ## /sudoers
-
-
-## test script
-script_file='test.bash'
-script_b64='${test_script}'
-if [[ -n $script_b64 ]]; then
-  echo -n $script_b64 | base64 -d > $workDir/$script_file
-  chmod 755 $workDir/$script_file
-  ln -s $workDir/$script_file /home/azadmin/$script_file
-  chown -R azadmin:azadmin $workDir
-fi
-## /test script
-
 
 
 # vim: set syntax=sh tabstop=2 expandtab:

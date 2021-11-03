@@ -13,6 +13,9 @@ terraform.errors
 # working backups and miscellaneous untracked files
 misc/
 misc_files/
+orig/
+optional/
+templates/delme/
 
 # post-ingestion template files
 work_tmp/

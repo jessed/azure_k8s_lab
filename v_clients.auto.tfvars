@@ -1,6 +1,9 @@
 clients = {
   bigip_ple_name          = "ple_bigip_client"
-  vnet_cidr               = "10.211.0.0/16"
+  vnet = {
+    name                  = "jessnet-clients"
+    cidr                  = "10.211.0.0/16"
+  }
   node = {
     count                 = 1
     prefix                = "mvmc"

@@ -1,4 +1,4 @@
-k8s = {
+aks = {
   prefix                          = "jesseaks"
   identity                        = "SystemAssigned"
   load_balancer_sku               = "Standard"

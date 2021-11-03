@@ -1,1 +1,2 @@
-variable rg {}
+variable rg           {}
+variable rg_deployed  {}

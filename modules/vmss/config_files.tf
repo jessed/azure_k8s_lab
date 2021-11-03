@@ -6,34 +6,31 @@ resource "local_file" "bigip_onboard" {
     cloud_init_log                = var.f5_common.cloud_init_log
     admin_user                    = var.f5_common.bigip_user
     admin_password                = var.f5_common.bigip_pass
-    use_blob                      = var.f5_common.use_blob
-    use_bigiq_license             = var.f5_common.use_bigiq_license
-    BLOB                          = var.f5_common.blob
-    USE_BLOB                      = var.f5_common.use_blob
+    use_bigiq_license             = var.vmss.use_paygo == false ? 1 : 0
+    blob_path                     = "${var.storage.container.id}"
     DO_FN                         = var.f5_common.DO_file
     TS_FN                         = var.f5_common.TS_file # TS config in log_analytics.tf
     AS3_FN                        = var.f5_common.AS3_file
     CFG_DIR                       = var.f5_common.cfg_dir
-    DO_conf                       = base64encode(local_file.do_json.content)
+    DO_conf                       = try(base64encode(local_file.do_json-byol[0].content),
+                                        base64encode(local_file.do_json-payg[0].content))
     TS_conf                       = base64encode(local_file.ts_json.content)
     AS3_conf                      = base64encode(local_file.as3_json.content)
     ltm_config_b64                = ""
-    ltm_config                    = ""
-    ltm_cfg_blob                  = ""
-    ltm_cfg_url                   = var.f5_common.ltm_cfg_file
-    license_update                = base64encode(local_file.update_license.content)
-    systemd_licensing             = filebase64("${path.root}/templates/update_license.service")
-    servers                       = join(" ", var.servers)
+    ltm_cfg_file                  = var.f5_common.ltm_initial_cfg_file 
+    license_update                = try(base64encode(local_file.update_license[0].content), "")
+    systemd_licensing             = try(local_file.systemd_licensing[0].content, "")
   })
   filename                        = "${path.root}/work_tmp/bigip_onboard.bash"
 }
 
 # Declarative-Onboarding config
-resource "local_file" "do_json" {
-  content = templatefile("${path.root}/templates/vmss-do.json", {
+resource "local_file" "do_json-byol" {
+  count   = var.vmss.use_paygo == false ? 1 : 0
+  content = templatefile("${path.root}/templates/do-byol.json", {
     data_gateway                  = cidrhost(var.data_subnet.address_prefixes[0], 1)
     mgmt_gateway                  = cidrhost(var.mgmt_subnet.address_prefixes[0], 1)
-    log_subnet                    = var.log_subnet.address_prefixes[0]
+    log_subnet                    = var.mgmt_subnet.address_prefixes[0]
     dns_server                    = var.vmss.dns_server
     ntp_server                    = var.vmss.ntp_server
     timezone                      = var.vmss.timezone
@@ -44,6 +41,22 @@ resource "local_file" "do_json" {
     bigIqLicensePool              = var.bigiq.lic_pool
     bigIqUnitOfMeasure            = var.bigiq.lic_measure
     bigIqHypervisor               = var.bigiq.lic_hypervisor
+    bigIpUser                     = var.f5_common.bigip_user
+    bigIpPass                     = var.f5_common.bigip_pass
+  })
+  filename                        = "${path.root}/work_tmp/do_file.json"
+}
+
+# Declarative-Onboarding config
+resource "local_file" "do_json-payg" {
+  count   = var.vmss.use_paygo == true ? 1 : 0
+  content = templatefile("${path.root}/templates/do-payg.json", {
+    data_gateway                  = cidrhost(var.data_subnet.address_prefixes[0], 1)
+    mgmt_gateway                  = cidrhost(var.mgmt_subnet.address_prefixes[0], 1)
+    log_subnet                    = var.mgmt_subnet.address_prefixes[0]
+    dns_server                    = var.vmss.dns_server
+    ntp_server                    = var.vmss.ntp_server
+    timezone                      = var.vmss.timezone
     bigIpUser                     = var.f5_common.bigip_user
     bigIpPass                     = var.f5_common.bigip_pass
   })
@@ -68,16 +81,9 @@ resource "local_file" "ts_json" {
   filename                        = "${path.root}/work_tmp/ts_data.json"
 }
 
-# LTM configuration
-#resource "local_file" "ltm_config" {
-#  content = templatefile("${path.root}/templates/ltm_config.conf-template", {
-#    self_ip                       = azurerm_network_interface.data_nic.*.private_ip_address[count.index]
-#  })
-#  filename                        = "${path.root}/work_tmp/ltm_config.conf"
-#}
-
 # update license script
 resource "local_file" "update_license" {
+  count   = var.vmss.use_paygo == false ? 1 : 0
   content = templatefile("${path.root}/templates/update_license.template", {
     project                       = var.metadata.project
     bigIqHost                     = var.bigiq_host
@@ -87,5 +93,12 @@ resource "local_file" "update_license" {
     bigIpPass                     = var.f5_common.bigip_pass
   })
   filename                        = "${path.root}/work_tmp/update_license.bash"
+}
+
+# license service script object
+resource "local_file" "systemd_licensing" {
+  count                           = var.vmss.use_paygo == false ? 1 : 0
+  content                         = filebase64("${path.root}/templates/update_license.service")
+  filename                        = "${path.root}/work_tmp/systemd_licensing.service"
 }
 

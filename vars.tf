@@ -5,7 +5,6 @@ variable "subscription_id"  { default = "0f92c295-b01d-47ab-a709-1868040254df" }
 variable "lab_prefix"       { default = "jessed-aks-lab" }
 variable "node_count"       { default = 1 }                 # Number of client and server nodes
 variable "bigip_count"      { default = 2 }                 # Number of BIG-IP VEs to deploy
-variable "use_vmss"         { default = true }
 variable "vnet_cidr"        { default = "10.210.0.0/16" }
 
 
@@ -127,7 +126,7 @@ locals {
 
 # These variables will be populated by the vars_bigips.tfvars, vars_clients.tfvars,
 # and vars_servers.tfvars files respectively
-variable "vmss"             {}
+variable "bigip"            {}
 variable "clients"          {}
 variable "storage"          {}
 variable "aks"							{}

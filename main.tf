@@ -90,15 +90,37 @@ module "analytics" {
 # BIG-IP
 module "lb" {
   source                      = "./modules/load-balancer"
+  lb                          = local.lb
   rg                          = module.rg.out
   subnet                      = module.bigip_network.data_subnet
-  lb                          = local.lb
 }
 
 # Create VMSS pool with BIG-IP members
 module "vmss" {
   source                      = "./modules/vmss"
-  vmss                        = var.vmss
+  count                       = var.bigip.use_vmss == true ? 1 : 0
+  vmss                        = var.bigip
+  rg                          = module.rg.out
+  mgmt_subnet                 = module.bigip_network.mgmt_subnet
+  data_subnet                 = module.bigip_network.data_subnet 
+  mgmt_nsg                    = module.mgmt_nsg.out
+  data_nsg                    = module.data_nsg.out
+	lb_pool											= module.lb.pool
+  f5_common                   = local.f5_common
+  metadata                    = local.metadata
+  bigiq_host                  = local.bigiq.host
+  bigiq                       = local.bigiq
+  analytics                   = local.log_analytics
+  law                         = module.analytics.out
+  uai                         = module.uai.out
+  storage                     = module.storage.out
+}
+
+# Create standalone BIG-IP instance(s)
+module "bigip" {
+  source                      = "./modules/bigip"
+  count                       = var.bigip.use_vmss == false ? 1 : 0
+  bigip                       = var.bigip
   rg                          = module.rg.out
   mgmt_subnet                 = module.bigip_network.mgmt_subnet
   data_subnet                 = module.bigip_network.data_subnet 

@@ -1,12 +1,12 @@
 # F5 BIG-IP Azure Test/Performance Environment
 ## Overview
-This Terraform plan will deploy an environment in which F5 BIG-IP performing transparent encryption 
-of TCP traffic to a pre-defined server for decryption.
+This Terraform plan will deploy a K8s lab environment with Azure AKS and F5 BIG-IP. 
+BIG-IP can be deployed as standalone instances or as members of a VMSS. 
 
 ### Pre-deployment
 Ensure you update variables in the following files prior to deployment:
 - vars.tf
-- v_vmss.auto.tfvars
+- v_bigip.auto.tfvars
 - v_clients.auto.tfvars
 - v_storage.auto.tfvars
 - v_aks.auto.tfvars
@@ -23,6 +23,8 @@ Ensure you update variables in the following files prior to deployment:
 - vmss
 - k8s
 - clients
+- vmss
+- bigip
 - vnet_peering
 
 ## Caveats / Notes

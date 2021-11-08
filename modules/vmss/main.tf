@@ -8,8 +8,8 @@ resource "azurerm_marketplace_agreement" "f5_bigip" {
 
 # Create VMSS
 resource "azurerm_linux_virtual_machine_scale_set" "bigip" {
-  name                            = var.vmss.prefix
-  computer_name_prefix            = var.vmss.prefix
+  name                            = var.vmss.vmss_name
+  computer_name_prefix            = var.vmss.node_prefix
   resource_group_name             = var.rg.name
   location                        = var.rg.location
   sku                             = var.vmss.size
@@ -26,8 +26,8 @@ resource "azurerm_linux_virtual_machine_scale_set" "bigip" {
 
   # A valid identity name must be provided in secrets.json
   identity {
-    type                          = var.uai.id != "" ? "UserAssigned" : "SystemAssigned"
-    identity_ids                  = var.uai.id != "" ? [var.uai.id] : [""]
+    type                          = var.uai.id == "" ? "SystemAssigned" : "UserAssigned"
+    identity_ids                  = var.uai.id == "" ? [""] : [var.uai.id]
   }
 
   admin_ssh_key {

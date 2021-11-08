@@ -1,7 +1,8 @@
 # VMSS Setup
-vmss = {
-  prefix                      = "jessed-vmss"
-  nodes                       = 2
+bigip = {
+  use_vmss                    = false
+  node_prefix                 = "k8sltm"
+  nodes                       = 1
   domain                      = "westus2.cloudapp.azure.com"
   disk                        = "Standard_LRS"
   dns_server                  = "168.63.129.16"
@@ -14,15 +15,19 @@ vmss = {
   data_ip_name                = "bigip_data"
   accel_net                   = false                           # Accelerated Networking (Only image w/ 4+ vCPU)
   use_paygo                   = true
-  use_terminate_notification  = false
-  terminate_wait_time         = "PT5M"
 
 
 # storage account for boot diagnostics
   storage_name                = "jessemvmdiagnostics"
   boot_diagnostics_enabled    = false
 
-## Marketplace general
+# VMSS-specific settings
+  vmss_name                   = "aks-vmss"
+  use_terminate_notification  = false
+  terminate_wait_time         = "PT5M"
+
+
+# Marketplace general
   # Generates an error if enabled with BYOL images, or if the license for a paygo image has previously 
   # been accepted. Basically, this is a single-use item for each BIG-IP image. 
   accept_eula                 = false                                  # Accept marketplace aggreement

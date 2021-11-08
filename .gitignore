@@ -15,6 +15,7 @@ misc/
 misc_files/
 orig/
 optional/
+templates/old/
 templates/delme/
 
 # post-ingestion template files

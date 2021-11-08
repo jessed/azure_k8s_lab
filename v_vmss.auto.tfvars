@@ -1,6 +1,6 @@
 # VMSS Setup
 vmss = {
-  prefix                      = "mvmltm"
+  prefix                      = "jessed-vmss"
   nodes                       = 2
   domain                      = "westus2.cloudapp.azure.com"
   disk                        = "Standard_LRS"

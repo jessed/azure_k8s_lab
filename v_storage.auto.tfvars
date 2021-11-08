@@ -1,6 +1,6 @@
 # Storage details
 storage = {
-  name                    = "mvmltm"
+  name                    = "jessesksltm"
   account_tier            = "Standard"
   replication_type        = "LRS"
   account_kind            = "StorageV2"

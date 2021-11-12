@@ -2,8 +2,8 @@
 resource "azurerm_marketplace_agreement" "f5_bigip" {
   count                     = var.bigip.accept_eula == true ? 1 : 0
   publisher                 = var.bigip.publisher
-  offer                     = var.bigip.offer
-  plan                      = var.bigip.plan
+  offer                     = var.bigip.use_paygo == true ? var.bigip.paygo-offer : var.bigip.byol-product
+  plan                      = var.bigip.use_paygo == true ? var.bigip.paygo-plan : var.bigip.byol-plan
 }
 
 # Create Public IP(s)
@@ -121,8 +121,8 @@ resource "azurerm_linux_virtual_machine" "bigip" {
 
   plan {
     publisher                     = var.bigip.publisher
-    name                          = var.bigip.use_paygo == true ? var.bigip.paygo-product : var.bigip.byol-product
-    product                       = var.bigip.use_paygo == true ? var.bigip.paygo-sku : var.bigip.byol-sku
+    product                       = var.bigip.use_paygo == true ? var.bigip.paygo-product : var.bigip.byol-product
+    name                          = var.bigip.use_paygo == true ? var.bigip.paygo-sku : var.bigip.byol-sku
   }
 
   os_disk {

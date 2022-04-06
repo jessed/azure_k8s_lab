@@ -1,5 +1,5 @@
 variable rg               {}
-variable vmss             {}
+variable bigip            {}
 variable mgmt_subnet      {}
 variable data_subnet      {}
 variable lb_pool          {}

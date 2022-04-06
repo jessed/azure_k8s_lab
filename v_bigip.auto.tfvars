@@ -13,12 +13,12 @@ bigip = {
   mgmt_ip_name                = "bigip_mgmt"
   data_ip_pub                 = "bigip_data_pub"
   data_ip_name                = "bigip_data"
-  accel_net                   = false                           # Accelerated Networking (Only image w/ 4+ vCPU)
+  accel_net                   = true                           # Accelerated Networking (Only image w/ 4+ vCPU)
   use_paygo                   = true
 
 
 # storage account for boot diagnostics
-  storage_name                = "jessemvmdiagnostics"
+  storage_name                = "jessek8labdiagnostics"
   boot_diagnostics_enabled    = false
 
 # VMSS-specific settings
@@ -33,18 +33,18 @@ bigip = {
   accept_eula                 = false                                  # Accept marketplace aggreement
 
   publisher                   = "f5-networks"
-  f5ver                       = "16.1.000000"
+  f5ver                       = "15.1.400000"
   size                        = "Standard_DS3_v2"
 
-## BYOL Images
-  byol-plan                   = "f5-big-all-2slot-byol"                # sku:     BYOL
-  byol-sku                    = "f5-big-all-2slot-byol"                # sku:     BYOL
-  byol-offer                  = "f5-big-ip-byol"                       # offer:   BYOL
-  byol-product                = "f5-big-ip-byol"                       # offer:   BYOL
-
 ## PAYG Images
-  paygo-plan                  = "f5-bigip-virtual-edition-1g-good-hourly"     # sku:     PAYG, 1G, Good
-  paygo-sku                   = "f5-bigip-virtual-edition-1g-good-hourly"     # sku:     PAYG, 1G, Good
-  paygo-offer                 = "f5-big-ip-good"                              # offer:   PAYG, Good
-  paygo-product               = "f5-big-ip-good"                              # offer:   PAYG, Good
+  paygo-plan                  = "f5-bigip-virtual-edition-1g-good-hourly-po-f5"   # sku:     PAYG, 1G, Good
+  paygo-sku                   = "f5-bigip-virtual-edition-1g-good-hourly-po-f5"   # sku:     PAYG, 1G, Good
+  paygo-offer                 = "f5-big-ip-good"                                  # offer:   PAYG, Good
+  paygo-product               = "f5-big-ip-good"                                  # offer:   PAYG, Good
+
+## BYOL Images
+  byol-plan                   = "f5-big-all-2slot-byol"                           # sku:     BYOL
+  byol-sku                    = "f5-big-all-2slot-byol"                           # sku:     BYOL
+  byol-offer                  = "f5-big-ip-byol"                                  # offer:   BYOL
+  byol-product                = "f5-big-ip-byol"                                  # offer:   BYOL
 }

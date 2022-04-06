@@ -49,7 +49,7 @@ resource "azurerm_lb_rule" "ha_rule" {
   protocol                        = "All"
   frontend_port                   = 0
   backend_port                    = 0
-  backend_address_pool_id         = azurerm_lb_backend_address_pool.lb_pool.id
+  backend_address_pool_ids        = [azurerm_lb_backend_address_pool.lb_pool.id]
   probe_id                        = azurerm_lb_probe.nva_probe.id
   enable_tcp_reset                = true
   frontend_ip_configuration_name  = "${var.lb.name}_frontend"

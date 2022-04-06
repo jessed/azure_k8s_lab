@@ -1,1 +1,1 @@
-#output "k8s_public_ip"  { value = azurerm_public_ip.k8s_pub_ip.ip_address }
+output "endpoint"   { value = azurerm_kubernetes_cluster.main.kube_config.0.host }

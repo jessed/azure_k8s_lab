@@ -2,12 +2,12 @@
 
 # System Onboarding script
 resource "local_file" "bigip_onboard" {
-  content = templatefile("${path.root}/templates/vmss_cloud_init.template", {
+  content = templatefile("${path.root}/templates/bigip_cloud_init.template", {
     cloud_init_log                = var.f5_common.cloud_init_log
     admin_user                    = var.f5_common.bigip_user
     admin_password                = var.f5_common.bigip_pass
     use_bigiq_license             = var.bigip.use_paygo == false ? 1 : 0
-    blob_path                     = "${var.storage.container.id}"
+    blob_path                     = var.storage.container.id
     DO_FN                         = var.f5_common.DO_file
     TS_FN                         = var.f5_common.TS_file # TS config in log_analytics.tf
     AS3_FN                        = var.f5_common.AS3_file

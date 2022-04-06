@@ -54,7 +54,7 @@ locals {
     mgmt = {
       name                    = format("%s-mgmt-nsg", var.lab_prefix)
       dst_ports               = ["22","443", "8443"]
-      src_addrs               = ["24.16.243.5","98.237.185.124","173.59.5.20","97.115.100.253"] # Replace with your source addess(es)
+      src_addrs               = ["104.219.104.84","73.140.91.132"] # Replace with your source addess(es)
     }
     data = {
       name                    = format("%s-data-nsg", var.lab_prefix)

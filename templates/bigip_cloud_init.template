@@ -92,7 +92,7 @@ get_mgmt_auth_header() {
 }
 
 get_storage_auth_header() {
-  echo "$(date +%T) Getting storage authentication token"
+  echo "$(date +%T) ($${FUNCNAME[0]}) Getting storage authentication token"
   tokenUrl="http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://storage.azure.com/"
   token=$(curl -0s -H "Metadata:true" $tokenUrl | jq -r ".access_token")
   echo "x-ms-version: 2017-11-09" > $uai_storage_headers
@@ -104,13 +104,13 @@ get_storage_auth_header() {
 get_self_ip() {
   # Get data-plane NIC mac-address
   # looping this because sometimes it is called too soon and the MAC isn't available
-  echo "$(date +%T) Getting data-plane MAC address"
+  echo "$(date +%T) ($${FUNCNAME[0]}) Getting data-plane MAC address"
   while [[ true ]]; do
     ((count++))
     dataNicMac=$(tmsh show net interface 1.1 all-properties | awk '/uninit/ { print toupper($3) }' | sed 's/://g')
     if [[ -n $dataNicMac && ! $dataNicMac =~ "NONE" ]]; then break; fi
     if (( count > 30 )); then
-      echo "$(date +%T) Failed to find data nic mac address."
+      echo "$(date +%T) ($${FUNCNAME[0]}) Failed to find data nic mac address."
       dataNicMacErr=1
       break
     fi
@@ -119,18 +119,18 @@ get_self_ip() {
 
   # Failure to get the NIC MAC is unrecoverable
   if [[ $dataNicMacErr ]]; then
-    echo "$(date +%T) ERROR: Failed to get data-plane mac address"
+    echo "$(date +%T) ($${FUNCNAME[0]}) ERROR: Failed to get data-plane mac address"
     tmsh show net interfaces all-properties >> $cfg_dir/$cloud_init_log
     exit 1
   fi
-  echo "$(date +%T) Found data-plane mac address: $dataNicMac"
+  echo "$(date +%T) ($${FUNCNAME[0]}) Found data-plane mac address: $dataNicMac"
 
   # filter assigned addresses by data-plane mac
   jqAddrFilter=".network.interface[] | select(.macAddress == \"$dataNicMac\") | .ipv4.ipAddress[0].privateIpAddress"
   jqMaskFilter=".network.interface[] | select(.macAddress == \"$dataNicMac\") | .ipv4.subnet[0].prefix"
 
   IP_HOSTNAME_FOUND=0
-  echo "$(date +%T) Getting Azure IP address for MAC address '$dataNicMac'"
+  echo "$(date +%T) ($${FUNCNAME[0]}) Getting Azure IP address for MAC address '$dataNicMac'"
   for (( c=0; c < 30; c++ )); do
     self_ip=$(curl -sH Metadata:true $metadataUrl | jq -r "$jqAddrFilter")
     netmask=$(curl -sH Metadata:true $metadataUrl | jq -r "$jqMaskFilter")
@@ -146,8 +146,8 @@ get_self_ip() {
 
   # Unrecoverable error in retrieving IP and host information - redeploying instance
   if [[ $IP_HOSTNAME_FOUND == 0 ]]; then
-    echo "$(date +%T) CRITICAL ERROR: Failed to determine IP address or hostname. Redeploying instance."
-    echo "$(date +%T) self_ip: '$self_ip', netmask: '$netmask', host: '$host'"
+    echo "$(date +%T) ($${FUNCNAME[0]}) CRITICAL ERROR: Failed to determine IP address or hostname. Redeploying instance."
+    echo "$(date +%T) ($${FUNCNAME[0]}) self_ip: '$self_ip', netmask: '$netmask', host: '$host'"
 
     # Build the URI to redeploy the instance through the Azure REST API
     uri="management.azure.com/subscriptions/$subscription_id"
@@ -172,22 +172,23 @@ get_bigip_config() {
   location_pattern="^https?://"
   if [[ $ltm_cfg_file =~ $location_pattern ]]; then
     # file is a URI; not using blob storage
-    echo "$(date +%T) Retrieving bigip.conf from $ltm_cfg_file"
+    echo "$(date +%T) ($${FUNCNAME[0]}): URI detected, not using storage account"
+    echo "$(date +%T) ($${FUNCNAME[0]}) Retrieving bigip.conf from $ltm_cfg_file"
     curl -s -H "$(cat $uai_storage_headers)" $storage_url/$container/$ltm_cfg_file -o $ltm_cfg
   else
     # file is not a URI; assuming blob storage should be used
     # Azure seems to have an issue if this is sent too early in the boot or deployemnet sequence
     # so we're going to try to retrieve the file a few times
-    echo "$(date +%T) Retrieving bigip.conf from  $blob_path/$ltm_cfg_file"
-    echo "$(date +%T) curl -sH \"\$(cat $uai_storage_headers)\" $blob_path/$ltm_cfg_file -o $ltm_cfg -w $http_code"
+    echo "$(date +%T) ($${FUNCNAME[0]}) Retrieving bigip.conf from  $blob_path/$ltm_cfg_file"
+    echo "$(date +%T) ($${FUNCNAME[0]}) curl -sH \"\$(cat $uai_storage_headers)\" $blob_path/$ltm_cfg_file -o $ltm_cfg -w $http_code"
   
     for (( c=0; c < 20; c++ )); do
       status=$(curl -sH "$(cat $uai_storage_headers)" $blob_path/$ltm_cfg_file -o $ltm_cfg -w $http_code)
       if [[ $status == 200 ]]; then
-        echo "$(date +%T) Initial bigip.conf retrieved successfully"
+        echo "$(date +%T) ($${FUNCNAME[0]}) Initial bigip.conf retrieved successfully"
         break
       else
-        echo "$(date +%T) Failed to retrieve initial bigip.conf (status: $status, attempt #: $c)"
+        echo "$(date +%T) ($${FUNCNAME[0]}) Failed to retrieve initial bigip.conf (status: $status, attempt #: $c)"
         sleep 5
       fi
     done
@@ -202,11 +203,11 @@ get_iapp_pkgs() {
       # Not using blob storage
       file=$(basename $pkg)
       if [[ -f $rpms_dir/$file ]]; then
-        echo "$(date +%T) File $rpms_dir/$file already present - skipping download"
+        echo "$(date +%T) ($${FUNCNAME[0]}) File $rpms_dir/$file already present - skipping download"
         continue
       fi
-      echo "$(date +%T) Downloading: $file"
-      echo $(date +%T) curl -Ls $pkg -o $rpms_dir/$file
+      echo "$(date +%T) ($${FUNCNAME[0]}) Downloading: $file"
+      echo $(date +%T) ($${FUNCNAME[0]}) curl -Ls $pkg -o $rpms_dir/$file
       curl -Ls $pkg -o $rpms_dir/$file 2>/$cfg_dir/curl_$${file}.log
       curl -Ls $pkg.sha256 -o $rpms_dir/$file.sha256 2>>/$cfg_dir/curl_$${file}.log
   
@@ -214,17 +215,17 @@ get_iapp_pkgs() {
       shaCalc=$(shasum -a 256 $rpms_dir/$file | awk '{print $1}')
       shaRead=$(cat $rpms_dir/$file.sha256 | awk '{print $1}')
       if [[ $shaCalc != $shaRead ]]; then
-        echo "$(date +%T) ERROR: Calculated checksum ($shaCalc) does not match downloaded checksum ($shaRead) for file $file"
+        echo "$(date +%T) ($${FUNCNAME[0]}) ERROR: Calculated checksum ($shaCalc) does not match downloaded checksum ($shaRead) for file $file"
         #rm $rpms_dir/$file
       else
-        echo "$(date +%T) Checksums match for file $file"
+        echo "$(date +%T) ($${FUNCNAME[0]}) Checksums match for file $file"
         rm $cfg_dir/curl_$${file}.log $rpms_dir/$file.sha256
       fi
   
     else
       # Using blob storage
-      echo -e "$(date +%T) Downloading $file"
-      echo $(date +%T) curl -LsH "$(cat $uai_storage_headers)" $blob_path/$file -o $rpms_dir/$file
+      echo -e "$(date +%T) ($${FUNCNAME[0]}) Downloading $file"
+      echo $(date +%T) ($${FUNCNAME[0]}) curl -LsH "$(cat $uai_storage_headers)" $blob_path/$file -o $rpms_dir/$file
       curl -#vLH "$(cat $uai_storage_headers)" $blob_path/$file -o $rpms_dir/$file 2>$cfg_dir/curl_$${file}.log
       if [[ $? == 0 ]]; then rm $cfg_dir/curl_$${file}.log; fi
       # Not performing checksum comparison because files in BLOB are pre-staged and assumed safe
@@ -255,17 +256,17 @@ install_iapp_pkgs() {
   for pkg in $AS3_FN $DO_FN $TS_FN; do
     file=$(basename $pkg)
     if [[ ! -f $rpms_dir/$file ]]; then
-      echo "$(date +%T) $rpms_dir/$file not present, skipping package install"
+      echo "$(date +%T) ($${FUNCNAME[0]}) $rpms_dir/$file not present, skipping package install"
       continue
     fi
     cp $rpms_dir/$file /var/config/rest/downloads
   
-    echo "Install REST package: $file"
+    echo " ($${FUNCNAME[0]}) Install REST package: $file"
     service=$(echo $file | cut -d '-' -f 2)
     if [[ $service =~ "declarative" ]]; then service="declarative-onboarding"; fi
   
     DATA=$(printf '{"operation":"INSTALL","packageFilePath":"%s"}' /var/config/rest/downloads/$file)
-    echo "$(date +%T) curl -su '$CREDS' -X POST $iAppInstallUrl -d '$DATA'"
+    echo "$(date +%T) ($${FUNCNAME[0]}) curl -su '$CREDS' -X POST $iAppInstallUrl -d '$DATA'"
     curl -su $CREDS -X POST $iAppInstallUrl -d $DATA -o $cfg_dir/$${service}_install.log
   
     for (( cnt=0; $cnt < 20; cnt++ )); do
@@ -276,15 +277,15 @@ install_iapp_pkgs() {
         rm $cfg_dir/$${service}_install.log
         break
       else
-        echo -e "$(date +%T) Status code: $STATUS package install in-progress ($file)"
+        echo -e "$(date +%T) ($${FUNCNAME[0]}) Status code: $STATUS package install in-progress ($file)"
       fi
       sleep 10
     done
   
     if [[ $pkgStatus == 1 ]]; then
-      echo -e "$(date +%T) $service install completed"
+      echo -e "$(date +%T) ($${FUNCNAME[0]}) $service install completed"
     else
-      echo -e "$(date +%T) $service package install FAILED"
+      echo -e "$(date +%T) ($${FUNCNAME[0]}) $service package install FAILED"
     fi
   done
 }
@@ -295,14 +296,14 @@ restart_rest() {
   tmsh restart sys service restnoded
   sleep 20
   
-  echo "$(date +%T) Checking restnoded status"
+  echo "$(date +%T) ($${FUNCNAME[0]}) Checking restnoded status"
   for (( CNT=0; $CNT < 60; CNT++)); do
     doStatus=$(curl -sku $CREDS https://localhost/$doInfoUrl | jq -r '.[].result.code' 2>$cfg_dir/do_check_error.log)
     if [[ $doStatus == 200 ]]; then
-      echo "$(date +%T) DO available, proceeding"
+      echo "$(date +%T) ($${FUNCNAME[0]}) DO available, proceeding"
       break
     else
-      echo "$(date +%T) DO not available"
+      echo "$(date +%T) ($${FUNCNAME[0]}) DO not available"
     fi
     sleep 3
   done
@@ -316,16 +317,16 @@ submit_declarative_onboarding() {
   
   if [[ $doStatus == 200 ]]; then
     # Update self-ip in ltm config file
-    echo "$(date +%T) Updating self-ip to $self_ip"
+    echo "$(date +%T) ($${FUNCNAME[0]}) Updating self-ip to $self_ip"
     sed -i  "s/__SELF_IP__/$self_ip/" $do_cfg
     sed -i  "s/__NETMASK__/$netmask/" $do_cfg
   
     # update DO config before posting
-    echo "$(date +%T) Updating hostname to $host"
+    echo "$(date +%T) ($${FUNCNAME[0]}) Updating hostname to $host"
     sed -i  "s/__HOSTNAME__/$host.westus2.cloudapp.azure.com/" $do_cfg
   
     # Submit DO Declaration
-    echo -e "$(date +%T) Submitting DO declaration"
+    echo -e "$(date +%T) ($${FUNCNAME[0]}) Submitting DO declaration"
     echo curl -sku $CREDS -X POST https://localhost/$doUrl -d @$do_cfg -o $cfg_dir/do_task_out.json
     curl -sku $CREDS -X POST https://localhost/$doUrl -d @$do_cfg -o $cfg_dir/do_task_out.json
     doTaskId=$(cat $cfg_dir/do_task_out.json | jq -r '.id')
@@ -342,32 +343,32 @@ submit_declarative_onboarding() {
         continue
       fi
       if (( $${CODE:-0000} == 200 )); then
-        echo "$(date +%T) DO task successful"
+        echo "$(date +%T) ($${FUNCNAME[0]}) DO task successful"
         test -f $cfg_dir/doTaskStatus.json && rm $cfg_dir/doTaskStatus.json
         break
       elif (( $${CODE:-0000} == 202 )); then
-        echo -e "$(date +%T) DO task still in-progress"
+        echo -e "$(date +%T) ($${FUNCNAME[0]}) DO task still in-progress"
       elif (( $${CODE:-0000} >= 400 )); then
-        echo -e "$(date +%T) DO task still failed, code: $CODE"
+        echo -e "$(date +%T) ($${FUNCNAME[0]}) DO task still failed, code: $CODE"
         break
       else
-        echo -e "$(date +%T) DO task status unknown (code $CODE)"
+        echo -e "$(date +%T) ($${FUNCNAME[0]}) DO task status unknown (code $CODE)"
       fi
       sleep 10
     done
   
   else
-    echo "$(date +%T) *** DO INSTALLATION FAILED ***"
+    echo "$(date +%T) ($${FUNCNAME[0]}) *** DO INSTALLATION FAILED ***"
   fi
 }
 
 
 # Submit TS Declaration
 submit_telemetry_streaming() {
-  echo "$(date +%T) Updating TS configuration with resource id: $resource_id"
+  echo "$(date +%T) ($${FUNCNAME[0]}) Updating TS configuration with resource id: $resource_id"
   sed -i  's#__resource_id__#'"$resource_id"'#' $ts_cfg
   
-  echo -e "$(date +%T) Submitting TS declaration"
+  echo -e "$(date +%T) ($${FUNCNAME[0]}) Submitting TS declaration"
   echo curl -sku '$CREDS' -H "Content-Type: Application/json" -X POST https://localhost/$tsUrl -d @$ts_cfg -o $cfg_dir/ts_status.json
   curl -sku $CREDS -H "Content-Type: Application/json" -X POST https://localhost/$tsUrl -d @$ts_cfg -o $cfg_dir/ts_status.json
   echo -e "$(date +%T) ===Telemetry Streaming configuration complete==="
@@ -376,8 +377,8 @@ submit_telemetry_streaming() {
 
 # Only run AS3 task if AS3 has been provided
 submit_as3() {
-  echo "$(date +%T) Submitting AS3 declaration"
-  echo $(date +%T) curl -sku '$CREDS' -H "Content-Type: Application/json" -X POST https://localhost/$as3Url -d @$as3_cfg
+  echo "$(date +%T) ($${FUNCNAME[0]}) Submitting AS3 declaration"
+  echo $(date +%T) ($${FUNCNAME[0]}) curl -sku '$CREDS' -H "Content-Type: Application/json" -X POST https://localhost/$as3Url -d @$as3_cfg
   curl -sku $CREDS -H "Content-Type: Application/json" -X POST https://localhost/$as3Url -d @$as3_cfg
 }
 
@@ -385,9 +386,9 @@ submit_as3() {
 ## Check DO configuration status
 check_do_status() {
   # We need to make sure the system is active and that DO config was successful before loading the LTM config.
-  echo "$(date +%T) Waiting for bigip to become active"
+  echo "$(date +%T) ($${FUNCNAME[0]}) Waiting for bigip to become active"
   wait_bigip_active
-  echo -e "$(date +%T) Ready to receive post-onboarding configuration\n"
+  echo -e "$(date +%T) ($${FUNCNAME[0]}) Ready to receive post-onboarding configuration\n"
 
   # Make sure the vlan is present. If not, the DO config hasn't actually finalized.
   vlans=$(tmsh list net vlan one-line 2>/dev/null | wc -l)
@@ -407,25 +408,28 @@ load_ltm_config() {
   
   # Load the LTM configuration
   if [[ -f $ltm_cfg ]]; then
+    echo "$(date +%T) ($${FUNCNAME[0]}): Updating virtual-server addresses"
+    sed -i  "s/__VS_ADDR__/$self_ip/g" $ltm_cfg
+
     if [[ check_do_status ]]; then
-      echo "$(date +%T) Vlans found, system is ready for ltm configuration"
+      echo "$(date +%T) ($${FUNCNAME[0]}): Vlans found, system is ready for ltm configuration"
       tmsh load sys config file $ltm_cfg merge verify >/dev/null 2>&1
 
       if [[ $? == 0 ]]; then
-        echo "$(date +%T) LTM config verify successful; loading LTM configuration"
+        echo "$(date +%T) ($${FUNCNAME[0]}): LTM config verify successful; loading LTM configuration"
         tmsh load sys config file $ltm_cfg merge >/dev/null 2>&1
       else
-        echo "$(date +%T) LTM config verify encountered errors; not loading ltm configuration"
+        echo "$(date +%T) ($${FUNCNAME[0]}): LTM config verify encountered errors; not loading ltm configuration"
       fi
 
     else
-      echo "$(date +%T) ERROR: Vlans not found, probable DO config failure"
-      echo "$(data +%T) System state is active but no vlans are present"
+      echo "$(date +%T) ($${FUNCNAME[0]}) ERROR: Vlans not found, probable DO config failure"
+      echo "$(data +%T) ($${FUNCNAME[0]}) System state is active but no vlans are present"
     fi
   fi
 
   # Save the configuration
-  echo "$(date +%T) Saving configuration"
+  echo "$(date +%T) ($${FUNCNAME[0]}): Saving configuration"
   tmsh save sys config
 }
 
@@ -454,7 +458,7 @@ mk_system_licensing() {
 disable_syslog_console() {
   # update syslog-ng to stop logging to the console
   # NOTE: This isn't actually necessary, but console logging is really disruptive, so...
-  echo "$(date +%T) Redirectong console log messages to /var/log/console.log"
+  echo "$(date +%T) ($${FUNCNAME[0]}): Redirectong console log messages to /var/log/console.log"
   sed -i -e 's/usertty(\"\*\")/file("\/var\/log\/console.log")/' /var/run/config/syslog-ng.conf
   tmsh restart sys service syslog-ng
 }
@@ -500,7 +504,7 @@ tmsh modify auth user $admin_user password "$admin_password"
 metadata=$(curl -sH Metadata:true $metadataUrl)
 subscription_id=$(echo $metadata | jq -r .compute.subscriptionId)
 resource_group=$(echo $metadata  | jq -r .compute.resourceId)
-vm_scale_set=$(echo $metadata      | jq -r .compute.vmScaleSetName)
+vm_scale_set=$(echo $metadata    | jq -r .compute.vmScaleSetName)
 resource_id=$(echo $metadata     | jq -r .compute.resourceId)
 instance_id=$(basename $resource_id)
 

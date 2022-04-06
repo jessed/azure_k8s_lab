@@ -1,19 +1,19 @@
 # Accept EULA
 resource "azurerm_marketplace_agreement" "f5_bigip" {
-  count                     = var.vmss.accept_eula == true ? 1 : 0
-  publisher                 = var.vmss.publisher
-  offer                     = var.vmss.use_paygo == true ? var.vmss.paygo-offer : var.vmss.byol-product
-  plan                      = var.vmss.use_paygo == true ? var.vmss.paygo-plan : var.vmss.byol-plan
+  count                     = var.bigip.accept_eula == true ? 1 : 0
+  publisher                 = var.bigip.publisher
+  offer                     = var.bigip.use_paygo == true ? var.bigip.paygo-offer : var.bigip.byol-product
+  plan                      = var.bigip.use_paygo == true ? var.bigip.paygo-plan : var.bigip.byol-plan
 }
 
-# Create VMSS
+# Create bigip
 resource "azurerm_linux_virtual_machine_scale_set" "bigip" {
-  name                            = var.vmss.vmss_name
-  computer_name_prefix            = var.vmss.node_prefix
+  name                            = var.bigip.bigip_name
+  computer_name_prefix            = var.bigip.node_prefix
   resource_group_name             = var.rg.name
   location                        = var.rg.location
-  sku                             = var.vmss.size
-  instances                       = var.vmss.nodes
+  sku                             = var.bigip.size
+  instances                       = var.bigip.nodes
   overprovision                   = false
   provision_vm_agent              = false
   admin_username                  = var.f5_common.bigip_user
@@ -36,25 +36,25 @@ resource "azurerm_linux_virtual_machine_scale_set" "bigip" {
   }
 
   terminate_notification {
-    enabled                       = var.vmss.use_terminate_notification
-    timeout                       = var.vmss.terminate_wait_time
+    enabled                       = var.bigip.use_terminate_notification
+    timeout                       = var.bigip.terminate_wait_time
   }
 
   source_image_reference {
-    publisher                     = var.vmss.publisher
-    version                       = var.vmss.f5ver
-    offer                         = var.vmss.use_paygo == true ? var.vmss.paygo-product : var.vmss.byol-product
-    sku                           = var.vmss.use_paygo == true ? var.vmss.paygo-sku : var.vmss.byol-sku
+    publisher                     = var.bigip.publisher
+    version                       = var.bigip.f5ver
+    offer                         = var.bigip.use_paygo == true ? var.bigip.paygo-product : var.bigip.byol-product
+    sku                           = var.bigip.use_paygo == true ? var.bigip.paygo-sku : var.bigip.byol-sku
   }
 
   plan {
-    publisher                     = var.vmss.publisher
-    product                       = var.vmss.use_paygo == true ? var.vmss.paygo-product : var.vmss.byol-product
-    name                          = var.vmss.use_paygo == true ? var.vmss.paygo-sku : var.vmss.byol-sku
+    publisher                     = var.bigip.publisher
+    product                       = var.bigip.use_paygo == true ? var.bigip.paygo-product : var.bigip.byol-product
+    name                          = var.bigip.use_paygo == true ? var.bigip.paygo-sku : var.bigip.byol-sku
   }
 
   os_disk {
-    storage_account_type          = var.vmss.disk
+    storage_account_type          = var.bigip.disk
     caching                       = "ReadWrite"
   }
 
@@ -76,7 +76,7 @@ resource "azurerm_linux_virtual_machine_scale_set" "bigip" {
     name                          = "data"
     primary                       = false
     network_security_group_id     = var.data_nsg.id
-    enable_accelerated_networking = var.vmss.accel_net
+    enable_accelerated_networking = var.bigip.accel_net
 
     ip_configuration {
       name                        = "primary"

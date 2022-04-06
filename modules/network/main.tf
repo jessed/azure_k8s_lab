@@ -31,7 +31,6 @@ resource "azurerm_virtual_network" "main" {
   location                        = var.rg.location
 }
 
-
 # Create management subnet
 resource "azurerm_subnet" "mgmt_subnet" {
   count                           = var.subnets_deployed == false ? 1 : 0
@@ -39,7 +38,7 @@ resource "azurerm_subnet" "mgmt_subnet" {
   address_prefixes                = [cidrsubnet(var.vnet.cidr, 8, 0)]
   resource_group_name             = var.vnet.rg_name
   virtual_network_name            = try(azurerm_virtual_network.main[0].name, data.azurerm_virtual_network.main[0].name)
-  service_endpoints = ["Microsoft.Storage"]
+  service_endpoints               = ["Microsoft.Storage"]
 
   # This endpoint is used to reach the Big-IQ PLS for licensing
   # PLS network services must be disabled and the PLE policies enabled to support the PL Endpoint
@@ -53,7 +52,7 @@ resource "azurerm_subnet" "data_subnet" {
   address_prefixes                = [cidrsubnet(var.vnet.cidr, 8, 10)]
   resource_group_name             = var.vnet.rg_name
   virtual_network_name            = try(azurerm_virtual_network.main[0].name, data.azurerm_virtual_network.main[0].name)
-  service_endpoints = ["Microsoft.Storage"]
+  service_endpoints               = ["Microsoft.Storage"]
 
   # This network carries data-plane traffic. To allow a Private-Link Service
   # to connect to the local ILB we must enable PLS network services

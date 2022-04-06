@@ -64,10 +64,7 @@ resource "azurerm_container_registry" "acr" {
 
 # Associate container registry with kubernetes cluster
 resource "null_resource" "connect_aks_to_acr" {
-  triggers = {
-    aks = azurerm_kubernetes_cluster.main.name
-    acr = azurerm_container_registry.acr.name
-  }
+  triggers = { acr = azurerm_container_registry.acr.name }
   provisioner "local-exec" {
     when    = create
     environment = {
@@ -81,13 +78,21 @@ resource "null_resource" "connect_aks_to_acr" {
 
 
 # Update ~/.kube/config
-resource "null_resource" "update_kube_config" {
-  triggers = { aks = azurerm_kubernetes_cluster.main.name }
+resource "null_resource" "update_kubeconfig" {
+  triggers = {
+    aks_name    = azurerm_kubernetes_cluster.main.name
+  }
+
   provisioner "local-exec" {
     environment = {
       aks_name  = azurerm_kubernetes_cluster.main.name
       rg_name   = var.rg.name
     }
     command = "az aks get-credentials -g $rg_name --name $aks_name"
+  }
+
+  provisioner "local-exec" {
+    when        = destroy
+    command     = "rm ~/.kube/config"
   }
 }

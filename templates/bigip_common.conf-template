@@ -1,5 +1,4 @@
 
-
 sys icall handler periodic /Common/termination_check {
   interval 60
   script /Common/termination_check
@@ -19,7 +18,6 @@ sys icall script /Common/termination_check {
   set eventHosts  {.Events[0].Resources[]}
   set nameFilter  {.compute.name}
 
-
   set eventType  [exec curl -0s -H $headers $eventMetadata | jq -r $eventType]
 
   if { $eventType == "Terminate" } {
@@ -38,26 +36,23 @@ sys icall script /Common/termination_check {
 }
 
 sys icall handler periodic /Common/cfg_update {
-	interval 300
-	script /Common/cfg_update
+  interval 300
+  script /Common/cfg_update
 }
 
 sys icall script cfg_update {
   app-service none
   definition {
   # vim: syntax=tcl shiftwidth=2 tabstop=2 softtabstop=2 expandtab:
-	# Get self-IP
-	set self_ip   [lindex [split [lindex [split [tmsh::list net self one-line] " "] 5] "/"] 0]
+  # Get self-IP
+  set self_ip   [lindex [split [lindex [split [tmsh::list net self one-line] " "] 5] "/"] 0]
   set pool_cfg  [tmsh::list ltm pool one-line]
-  set partition "prod"
+  set part_dir  "/config"
   
   # remote config file name
   set remoteCfgFile "bigip_prod.conf"
-  
-  #set localCfgFile "/shared/bigip.conf"
-  set localCfgFile "bigip.conf"
-  
-  set cfgUrl    "https://mvmltm.blob.core.windows.net/f5-bigip/$remoteCfgFile"
+  set localCfgFile "bigip_prod.conf"
+  set cfgUrl    "${container_id}/$remoteCfgFile"
   
   set tokenUrl  {http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://storage.azure.com/}
   set tokenHdrs "-HMetadata:true"
@@ -69,30 +64,67 @@ sys icall script cfg_update {
   set stHdr01 "x-ms-version:2017-11-09"
   set stHdr02 "Authorization: Bearer $storageToken"
   
-  # Retrieve bigip.conf from storage account
-  #puts "curl -0s -H \"$stHdr01\" -H \"$stHdr02\" $cfgUrl -o $localCfgFile"
-  exec curl -0s -H "$stHdr01" -H "$stHdr02" $cfgUrl -o $localCfgFile
-  
-  # Update virtual-server address to match self-ip
-  exec sed -i  "s/__VS_ADDR__/$self_ip/" $localCfgFile
-  
-  # Determine if there are any changes between the current and previous version
-  if {[catch {exec diff $localCfgFile ${localCfgFile}.bkup} err]} {
-    # files are different, load new file
-    puts "Configuration changed, backing up existing bigip.conf and loading new config"
-    file copy -force /config/partitions/$partition/bigip.conf /config/partitions/$partition/bigip.conf.auto_bkup
-    file copy -force $localCfgFile ${localCfgFile}.bkup
-    file copy -force $localCfgFile /config/partitions/$partition/bigip.conf
-    # load new configuration
-    tmsh::load sys config
-  } else {
-    # file is the same as the current version
-    puts "Configuration unchanged, exiting"
-    file delete $localCfgFile
+  # Retrieve $localCfgFile from storage account
+  if { [catch {exec curl -0s -H "$stHdr01" -H "$stHdr02" $cfgUrl -o $part_dir/$${localCfgFile}.new} err] } {
+    tmsh::log "ERROR: Failed to download $cfgUrl"
+    exit 1
   }
-  
-  # Save configuration
-  tmsh::save sys config
+
+  # Update virtual-server address to match self-ip
+  if { [catch {exec sed -i  "s/__SELF_IP__/$self_ip/" $part_dir/$${localCfgFile}.new} err] } {
+    tmsh::log "ERROR: Failed to translate __SELF_IP__ to $self_ip in $${localCfgFile}.new"
+    exit 2
+  }
+
+  # Determine if there are any changes between the current and previous version
+  if { [file exists $part_dir/$localCfgFile] &&
+       [file exists $part_dir/$${localCfgFile}.new] &&
+       [catch {exec diff $part_dir/$${localCfgFile}.new $part_dir/$localCfgFile} err]
+     } {
+    # files are different, load new file
+    tmsh::log "Configuration changed, backing up existing $localCfgFile and loading new config"
+    file copy -force $part_dir/$localCfgFile $part_dir/$${localCfgFile}.bkup
+    file copy -force $part_dir/$${localCfgFile}.new $part_dir/$localCfgFile
+    file delete $part_dir/$${localCfgFile}.new
+
+    # load new configuration
+    if { [catch {tmsh::load sys config file $part_dir/$localCfgFile merge} err]} {
+      # If load fails, save failed config failed file and revert to previous version
+      tmsh::log "WARNING: Unable to load $part_dir/$localCfgFile; renaming to $part_dir/$${localCfgFile}.FAIL.conf"
+      file copy -force $part_dir/$localCfgFile $part_dir/$${localCfgFile}.FAIL.conf
+      file copy -force $part_dir/$${localCfgFile}.bkup $part_dir/$localCfgFile
+      exit
+    } else {
+      tmsh::log "Successfully updated configuration"
+      if { [file exists $part_dir/$${localCfgFile}.FAIL.conf] } {
+        file delete $part_dir/$${localCfgFile}.FAIL.conf
+      }
+    }
+
+    } elseif { ![file exists $part_dir/$localCfgFile] } {
+      # $part_dir/$localCfgFile not found
+      tmsh::log "$${localCfgFile} file not found; initial load?"
+      file copy -force $part_dir/$${localCfgFile}.new $part_dir/$localCfgFile
+      file delete $part_dir/$${localCfgFile}.new
+
+      if { [catch {tmsh::load sys config file $part_dir/$localCfgFile merge} err]} {
+        # If load fails, save failed config failed file and revert to previous version
+        tmsh::log "WARNING: Unable to load $part_dir/$localCfgFile; renaming to $part_dir/$${localCfgFile}.FAIL.conf"
+        file copy -force $part_dir/$localCfgFile $part_dir/$${localCfgFile}.FAIL.conf
+        file copy -force $part_dir/$${localCfgFile}.bkup $part_dir/$localCfgFile
+        exit
+      } else {
+        tmsh::log "Successfully updated configuration"
+        tmsh::save sys config
+        if { [file exists $part_dir/$${localCfgFile}.FAIL.conf] } {
+          file delete $part_dir/$${localCfgFile}.FAIL.conf
+        }
+      }
+    } else {
+      # file is the same as the current version
+      tmsh::log "configuration unchanged; exiting without modification"
+      file delete $part_dir/$${localCfgFile}.new
+    }
   }
   description none
   events none

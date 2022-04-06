@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     azurerm = {
-      version = ">= 2.20"
+      version = ">= 2.87"
     }
   }
 }
@@ -55,6 +55,30 @@ module "data_nsg" {
   nsg                         = local.nsg.data
 }
 
+# Create K8s cluster
+module "aks" {
+  source                      = "./modules/aks"
+  rg                          = module.rg.out
+  data_subnet                 = module.bigip_network.data_subnet
+  aks_static                  = var.aks
+  aks_dynamic                 = local.aks
+}
+
+# Have to force this provide to be dependent on the 'update_kubeconfig' resource
+# to ensure that the config file is updated prior to sourcing that file.
+# The provider cannot be called within the module directly.
+provider "kubernetes" {
+  host                        = module.aks.endpoint
+  config_path                 = "~/.kube/config"
+}
+
+# Kubernetes configuration
+module "k8s" {
+  source                      = "./modules/kubernetes"
+  f5_common                   = local.f5_common
+  depends_on                  = [module.aks]
+}
+
 # Storage and secure-container
 module "storage" {
   source                      = "./modules/storage"
@@ -99,7 +123,7 @@ module "lb" {
 module "vmss" {
   source                      = "./modules/vmss"
   count                       = var.bigip.use_vmss == true ? 1 : 0
-  vmss                        = var.bigip
+  bigip                       = var.bigip
   rg                          = module.rg.out
   mgmt_subnet                 = module.bigip_network.mgmt_subnet
   data_subnet                 = module.bigip_network.data_subnet 
@@ -135,15 +159,6 @@ module "bigip" {
   law                         = module.analytics.out
   uai                         = module.uai.out
   storage                     = module.storage.out
-}
-
-# Create K8s cluster
-module "aks" {
-  source                      = "./modules/aks"
-  rg                          = module.rg.out
-  data_subnet                 = module.bigip_network.data_subnet
-  aks_static                  = var.aks
-  aks_dynamic                 = local.aks
 }
 
 # Clients

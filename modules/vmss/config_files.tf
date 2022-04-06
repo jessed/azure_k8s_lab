@@ -2,11 +2,11 @@
 
 # System Onboarding script
 resource "local_file" "bigip_onboard" {
-  content = templatefile("${path.root}/templates/vmss_cloud_init.template", {
+  content = templatefile("${path.root}/templates/bigip_cloud_init.template", {
     cloud_init_log                = var.f5_common.cloud_init_log
     admin_user                    = var.f5_common.bigip_user
     admin_password                = var.f5_common.bigip_pass
-    use_bigiq_license             = var.vmss.use_paygo == false ? 1 : 0
+    use_bigiq_license             = var.bigip.use_paygo == false ? 1 : 0
     blob_path                     = "${var.storage.container.id}"
     DO_FN                         = var.f5_common.DO_file
     TS_FN                         = var.f5_common.TS_file # TS config in log_analytics.tf
@@ -26,14 +26,14 @@ resource "local_file" "bigip_onboard" {
 
 # Declarative-Onboarding config
 resource "local_file" "do_json-byol" {
-  count   = var.vmss.use_paygo == false ? 1 : 0
+  count   = var.bigip.use_paygo == false ? 1 : 0
   content = templatefile("${path.root}/templates/do-byol.json", {
     data_gateway                  = cidrhost(var.data_subnet.address_prefixes[0], 1)
     mgmt_gateway                  = cidrhost(var.mgmt_subnet.address_prefixes[0], 1)
     log_subnet                    = var.mgmt_subnet.address_prefixes[0]
-    dns_server                    = var.vmss.dns_server
-    ntp_server                    = var.vmss.ntp_server
-    timezone                      = var.vmss.timezone
+    dns_server                    = var.bigip.dns_server
+    ntp_server                    = var.bigip.ntp_server
+    timezone                      = var.bigip.timezone
     bigIqHost                     = var.bigiq_host
     bigIqUsername                 = var.bigiq.user
     bigIqPassword                 = var.bigiq.pass
@@ -49,14 +49,14 @@ resource "local_file" "do_json-byol" {
 
 # Declarative-Onboarding config
 resource "local_file" "do_json-payg" {
-  count   = var.vmss.use_paygo == true ? 1 : 0
+  count   = var.bigip.use_paygo == true ? 1 : 0
   content = templatefile("${path.root}/templates/do-payg.json", {
     data_gateway                  = cidrhost(var.data_subnet.address_prefixes[0], 1)
     mgmt_gateway                  = cidrhost(var.mgmt_subnet.address_prefixes[0], 1)
     log_subnet                    = var.mgmt_subnet.address_prefixes[0]
-    dns_server                    = var.vmss.dns_server
-    ntp_server                    = var.vmss.ntp_server
-    timezone                      = var.vmss.timezone
+    dns_server                    = var.bigip.dns_server
+    ntp_server                    = var.bigip.ntp_server
+    timezone                      = var.bigip.timezone
     bigIpUser                     = var.f5_common.bigip_user
     bigIpPass                     = var.f5_common.bigip_pass
   })
@@ -83,7 +83,7 @@ resource "local_file" "ts_json" {
 
 # update license script
 resource "local_file" "update_license" {
-  count   = var.vmss.use_paygo == false ? 1 : 0
+  count   = var.bigip.use_paygo == false ? 1 : 0
   content = templatefile("${path.root}/templates/update_license.template", {
     project                       = var.metadata.project
     bigIqHost                     = var.bigiq_host
@@ -97,7 +97,7 @@ resource "local_file" "update_license" {
 
 # license service script object
 resource "local_file" "systemd_licensing" {
-  count                           = var.vmss.use_paygo == false ? 1 : 0
+  count                           = var.bigip.use_paygo == false ? 1 : 0
   content                         = filebase64("${path.root}/templates/update_license.service")
   filename                        = "${path.root}/work_tmp/systemd_licensing.service"
 }

@@ -26,7 +26,7 @@ locals {
 
 locals {
   metadata = {
-    project                 = "aks_lab"
+    project                 = "jesse_aks_lab"
   }
 }
 
@@ -40,6 +40,7 @@ locals {
   }
   aks = {
     prefix                  = var.aks.prefix
+    node_resource_group     = "${var.lab_prefix}-node_group_rg"
     identity                = var.aks.identity
     ssh_key                 = "~/.ssh/azure_f5.pub"
     username                = format("%s_%s", var.aks.prefix, var.aks.admin_username)
@@ -54,7 +55,7 @@ locals {
     mgmt = {
       name                    = format("%s-mgmt-nsg", var.lab_prefix)
       dst_ports               = ["22","443", "8443"]
-      src_addrs               = ["104.219.104.84","73.140.91.132"] # Replace with your source addess(es)
+      src_addrs               = ["73.11.130.43", "104.219.104.84"] # Replace with your source addess(es)
     }
     data = {
       name                    = format("%s-data-nsg", var.lab_prefix)

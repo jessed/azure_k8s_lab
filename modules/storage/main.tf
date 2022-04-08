@@ -6,7 +6,6 @@ resource "azurerm_storage_account" "primary" {
   account_tier                    = var.storage.account_tier
   account_replication_type        = var.storage.replication_type
   account_kind                    = var.storage.account_kind
-  allow_blob_public_access        = var.storage.public_access
   min_tls_version                 = var.storage.min_tls_version
 
   network_rules {

@@ -1,21 +1,14 @@
-# Create cluster outbound IP
-/*
-resource "azurerm_public_ip" "aks_pub_ip" {
-  name                              = format("${var.aks_dynamic.prefix}-mgmt")
-  resource_group_name               = var.rg.name
-  location                          = var.rg.location
-  allocation_method                 = "Static"
-  sku                               = "Standard"
-}
-*/
-
 # Create AKS cluster
 resource "azurerm_kubernetes_cluster" "main" {
   name                              = var.aks_dynamic.prefix
   resource_group_name               = var.rg.name
   location                          = var.rg.location
+  sku_tier                          = var.aks_static.sku_tier
   dns_prefix                        = var.aks_dynamic.prefix
+  public_network_access_enabled     = var.aks_static.public_network_access_enabled
+  role_based_access_control_enabled = var.aks_static.role_based_access_control_enabled
 
+  node_resource_group               = var.aks_dynamic.node_resource_group
   default_node_pool {
     name                            = var.aks_static.node_pool_name
     vnet_subnet_id                  = var.data_subnet.id
@@ -27,8 +20,10 @@ resource "azurerm_kubernetes_cluster" "main" {
     min_count                       = var.aks_static.node_min_count
     max_count                       = var.aks_static.node_max_count
 
+    enable_node_public_ip           = false
+
     linux_os_config {
-      transparent_huge_page_enabled   = var.aks_static.transparent_huge_page_enabled
+      transparent_huge_page_enabled = var.aks_static.transparent_huge_page_enabled
     }
   }
 
@@ -44,6 +39,7 @@ resource "azurerm_kubernetes_cluster" "main" {
 
     load_balancer_profile {
       managed_outbound_ip_count     = 1
+      idle_timeout_in_minutes       = var.aks_static.idle_timeout
 #      outbound_ip_address_ids       = [azurerm_public_ip.aks_pub_ip.id]
     }
   }
@@ -62,22 +58,16 @@ resource "azurerm_container_registry" "acr" {
   depends_on                        = [azurerm_kubernetes_cluster.main]
 }
 
-# Associate container registry with kubernetes cluster
-resource "null_resource" "connect_aks_to_acr" {
-  triggers = { acr = azurerm_container_registry.acr.name }
-  provisioner "local-exec" {
-    when    = create
-    environment = {
-      aks_name  = azurerm_kubernetes_cluster.main.name
-      acr_name  = azurerm_container_registry.acr.name
-      rg_name   = var.rg.name
-    }
-    command   = "/usr/local/bin/az aks update -n $aks_name -g $rg_name --attach-acr $acr_name"
-  }
+# Attach container registry to AKS cluster
+resource "azurerm_role_assignment" "main" {
+  principal_id                      = azurerm_kubernetes_cluster.main.kubelet_identity[0].object_id
+  role_definition_name              = "AcrPull"
+  scope                             = azurerm_container_registry.acr.id
+  skip_service_principal_aad_check  = true
 }
 
 
-# Update ~/.kube/config
+# Create or Update ~/.kube/config
 resource "null_resource" "update_kubeconfig" {
   triggers = {
     aks_name    = azurerm_kubernetes_cluster.main.name
@@ -96,3 +86,29 @@ resource "null_resource" "update_kubeconfig" {
     command     = "rm ~/.kube/config"
   }
 }
+
+/*
+# Create cluster outbound IP
+resource "azurerm_public_ip" "aks_pub_ip" {
+  name                              = format("${var.aks_dynamic.prefix}-mgmt")
+  resource_group_name               = var.rg.name
+  location                          = var.rg.location
+  allocation_method                 = "Static"
+  sku                               = "Standard"
+}
+
+# Associate container registry with kubernetes cluster
+resource "null_resource" "connect_aks_to_acr" {
+  triggers = { acr = azurerm_container_registry.acr.name }
+  provisioner "local-exec" {
+    when    = create
+    environment = {
+      aks_name  = azurerm_kubernetes_cluster.main.name
+      acr_name  = azurerm_container_registry.acr.name
+      rg_name   = var.rg.name
+    }
+    command   = "/usr/local/bin/az aks update -n $aks_name -g $rg_name --attach-acr $acr_name"
+  }
+}
+*/
+

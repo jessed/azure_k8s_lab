@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     azurerm = {
-      version = ">= 2.87"
+      version = ">= 3.1.0"
     }
   }
 }
@@ -68,8 +68,13 @@ module "aks" {
 # to ensure that the config file is updated prior to sourcing that file.
 # The provider cannot be called within the module directly.
 provider "kubernetes" {
-  host                        = module.aks.endpoint
-  config_path                 = "~/.kube/config"
+  host                        = module.aks.host
+#  config_path                 = "~/.kube/config"
+  username                    = module.aks.username
+  password                    = module.aks.password
+  client_key                  = base64decode(module.aks.client_key)
+  client_certificate          = base64decode(module.aks.client_certificate)
+  cluster_ca_certificate      = base64decode(module.aks.cluster_ca_certificate)
 }
 
 # Kubernetes configuration
@@ -79,6 +84,7 @@ module "k8s" {
   depends_on                  = [module.aks]
 }
 
+/*
 # Storage and secure-container
 module "storage" {
   source                      = "./modules/storage"
@@ -178,3 +184,5 @@ module "peering" {
   transit_vnet                = module.bigip_network.vnet
   client_vnet                 = module.clients.net
 }
+
+*/

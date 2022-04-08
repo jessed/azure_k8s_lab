@@ -26,7 +26,6 @@ resource "azurerm_lb" "lb" {
 
 resource "azurerm_lb_probe" "nva_probe" {
   name                            = "port_65000"
-  resource_group_name             = var.rg.name
   loadbalancer_id                 = azurerm_lb.lb.id
   port                            = 65000
 }
@@ -44,7 +43,6 @@ resource "azurerm_lb_backend_address_pool" "lb_pool" {
 
 resource "azurerm_lb_rule" "ha_rule" {
   name                            = "all_ports"
-  resource_group_name             = var.rg.name
   loadbalancer_id                 = azurerm_lb.lb.id
   protocol                        = "All"
   frontend_port                   = 0

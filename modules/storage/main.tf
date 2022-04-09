@@ -16,11 +16,11 @@ resource "azurerm_storage_account" "primary" {
   }
 }
 
-# Create storage container
+# Create storage container for bigip configuration elements
 resource "azurerm_storage_container" "container" {
-  name                            = var.storage.container_name
+  name                            = var.storage.bigip_container_name
+  container_access_type           = var.storage.bigip_container_access
   storage_account_name            = azurerm_storage_account.primary.name
-  container_access_type           = var.storage.container_access
 }
 
 # Create bigip.conf file in storage container
@@ -39,4 +39,18 @@ resource "azurerm_storage_blob" "bigip_common_conf" {
   storage_container_name      = azurerm_storage_container.container.name
   type                        = "Block"
   source                      = "${path.root}/templates/bigip_common.conf-template"
+}
+
+# Create file share for K8s volumes
+resource "azurerm_storage_share" "kubernetes" {
+  name                            = var.storage.k8s_share_name
+  quota                           = var.storage.k8s_share_size
+  storage_account_name            = azurerm_storage_account.primary.name
+
+  acl {
+    id                            = var.storage.k8s_share_acl_id
+    access_policy {
+      permissions                 = "rwdl"
+    }
+  }
 }

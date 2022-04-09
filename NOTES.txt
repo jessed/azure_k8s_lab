@@ -1,3 +1,28 @@
+Azure Container Registry (ACR) Operations
+
+https://docs.microsoft.com/en-us/azure/container-registry/container-registry-get-started-azure-cli
+https://docs.microsoft.com/en-us/azure/container-registry/container-registry-quickstart-task-cli
+
+
+Login to ACR
+az acr login -n jesseaksacr
+
+
+Build an image directly on ACR without building locally and uploading
+cd <docker_directory>
+az acr build --registry <registry_name> --image <image_name:tag> .
+
+See also: azurerm_container_registry_task
+
+
+To pull an image from the registry
+docker pull jesseaksacr.azurecr.io/jesse-nginx:0.1
+
+
+Run an image on ACR (downloads implicitly)
+docker run -it --rm -d jesseaksacr.azurecr.io/jesse-nginx:0.1
+
+
 VMSS REST API Operations
 
 https://docs.microsoft.com/en-us/rest/api/compute/virtual-machine-scale-set-vms

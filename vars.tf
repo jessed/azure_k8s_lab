@@ -44,7 +44,7 @@ locals {
     identity                = var.aks.identity
     ssh_key                 = "~/.ssh/azure_f5.pub"
     username                = format("%s_%s", var.aks.prefix, var.aks.admin_username)
-    acr_name                = format("%s%s", var.aks.prefix, var.aks.registry.name)
+    acr_name                = var.aks.registry.name
   }
   vnet = {                  # virtual networks
     name                    = var.vnet_deployed == false ? "jessnet-bigip" : local.existing_vnet_name

@@ -32,7 +32,7 @@ aks = {
   outbound_type                     = "loadBalancer"
 
   registry = {
-   name                             = "acr"
+   name                             = "jesseacr"
    sku                              = "Standard"
    admin_enabled                    = false
    identity                         = "SystemAssigned"

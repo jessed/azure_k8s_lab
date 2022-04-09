@@ -17,12 +17,6 @@ provider "azurerm" {
   }
 }
 
-# Create random string to append to global names
-resource "random_id" "uniq" {
-  byte_length                 = 4
-}
-
-
 # Resource-Group
 module "rg" {
   source                      = "./modules/resource_group"
@@ -64,27 +58,11 @@ module "aks" {
   aks_dynamic                 = local.aks
 }
 
-# Have to force this provide to be dependent on the 'update_kubeconfig' resource
-# to ensure that the config file is updated prior to sourcing that file.
-# The provider cannot be called within the module directly.
-provider "kubernetes" {
-  host                        = module.aks.host
-#  config_path                 = "~/.kube/config"
-  username                    = module.aks.username
-  password                    = module.aks.password
-  client_key                  = base64decode(module.aks.client_key)
-  client_certificate          = base64decode(module.aks.client_certificate)
-  cluster_ca_certificate      = base64decode(module.aks.cluster_ca_certificate)
-}
 
-# Kubernetes configuration
-module "k8s" {
-  source                      = "./modules/kubernetes"
-  f5_common                   = local.f5_common
-  depends_on                  = [module.aks]
-}
+##
+## Nothing below this point is necessary for generic K8s lab environments
+##
 
-/*
 # Storage and secure-container
 module "storage" {
   source                      = "./modules/storage"
@@ -98,6 +76,28 @@ module "storage" {
                                 ]
 }
 
+# Instantiate a kubernetes provide to deploy the K8s elements required for use by CIS and/or SPK.
+provider "kubernetes" {
+  host                        = module.aks.host
+#  config_path                 = "~/.kube/config"
+  username                    = module.aks.username
+  password                    = module.aks.password
+  client_key                  = base64decode(module.aks.client_key)
+  client_certificate          = base64decode(module.aks.client_certificate)
+  cluster_ca_certificate      = base64decode(module.aks.cluster_ca_certificate)
+}
+
+# Create K8s secret for storage account share access
+# Kubernetes configuration
+module "k8s" {
+  source                      = "./modules/kubernetes"
+  volume                      = module.storage.out
+  storage                     = var.storage
+  f5_common                   = local.f5_common
+  depends_on                  = [module.aks]
+}
+
+/*
 # User-Assigned Identity for secure-container access
 module "uai" {
   source                      = "./modules/user_assigned_identity"
@@ -186,3 +186,9 @@ module "peering" {
 }
 
 */
+
+# Create random string to append to global names
+resource "random_id" "uniq" {
+  byte_length                 = 4
+}
+

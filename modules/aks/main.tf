@@ -96,19 +96,5 @@ resource "azurerm_public_ip" "aks_pub_ip" {
   allocation_method                 = "Static"
   sku                               = "Standard"
 }
-
-# Associate container registry with kubernetes cluster
-resource "null_resource" "connect_aks_to_acr" {
-  triggers = { acr = azurerm_container_registry.acr.name }
-  provisioner "local-exec" {
-    when    = create
-    environment = {
-      aks_name  = azurerm_kubernetes_cluster.main.name
-      acr_name  = azurerm_container_registry.acr.name
-      rg_name   = var.rg.name
-    }
-    command   = "/usr/local/bin/az aks update -n $aks_name -g $rg_name --attach-acr $acr_name"
-  }
-}
 */
 

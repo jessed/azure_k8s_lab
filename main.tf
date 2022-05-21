@@ -8,11 +8,14 @@ terraform {
 provider "azurerm" {
   features {
     virtual_machine {
-      graceful_shutdown                   = true      # Necessary for license revocation when using BIG-IQ LM. 
-      delete_os_disk_on_deletion          = true
+      graceful_shutdown                       = true      # Necessary for license revocation when using BIG-IQ LM. 
+      delete_os_disk_on_deletion              = true
     }
     template_deployment {
-      delete_nested_items_during_deletion = true      # defaults to true, but meh...
+      delete_nested_items_during_deletion     = true      # defaults to true, but meh...
+    }
+    resource_group {
+      prevent_deletion_if_contains_resources  = false     # Allow the RG to be removed even if resources are still present
     }
   }
 }
@@ -63,6 +66,7 @@ module "aks" {
 ## Nothing below this point is necessary for generic K8s lab environments
 ##
 
+/*
 # Storage and secure-container
 module "storage" {
   source                      = "./modules/storage"

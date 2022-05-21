@@ -32,7 +32,6 @@ resource "azurerm_lb_probe" "nva_probe" {
 
 resource "azurerm_lb_backend_address_pool" "lb_pool" {
   name                            = var.lb.pool_name
-  #resource_group_name             = var.rg.name
   loadbalancer_id                 = azurerm_lb.lb.id
 
   timeouts {

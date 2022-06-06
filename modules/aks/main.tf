@@ -83,7 +83,7 @@ resource "null_resource" "update_kubeconfig" {
 
   provisioner "local-exec" {
     when        = destroy
-    command     = "rm ~/.kube/config"
+    command     = "kubectl config delete-context $aks_name"
   }
 }
 

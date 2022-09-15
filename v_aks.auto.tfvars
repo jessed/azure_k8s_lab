@@ -34,6 +34,8 @@ aks = {
   registry = {
    name                             = "jesseacr"
    sku                              = "Standard"
+   anonymous_pull                   = true    # default: false
+   public_access                    = true    # default: true
    admin_enabled                    = false
    identity                         = "SystemAssigned"
   }

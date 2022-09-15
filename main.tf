@@ -61,6 +61,18 @@ module "aks" {
   aks_dynamic                 = local.aks
 }
 
+# Create Azure Container Registry (ACR)
+module "acr" {
+  source                      = "./modules/acr"
+  rg                          = module.rg.out
+  data_subnet                 = module.bigip_network.data_subnet
+  aks_static                  = var.aks
+  aks_dynamic                 = local.aks
+  aks_id                      = module.aks.aks_id
+  depends_on                  = [module.aks]
+}
+
+
 
 ##
 ## Nothing below this point is necessary for generic K8s lab environments
@@ -101,7 +113,6 @@ module "k8s" {
   depends_on                  = [module.aks]
 }
 
-/*
 # User-Assigned Identity for secure-container access
 module "uai" {
   source                      = "./modules/user_assigned_identity"

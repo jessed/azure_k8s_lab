@@ -45,8 +45,38 @@ resource "azurerm_kubernetes_cluster" "main" {
   }
 }
 
+# Create or Update ~/.kube/config
+resource "null_resource" "update_kubeconfig" {
+  triggers = {
+    aks_name    = azurerm_kubernetes_cluster.main.name
+  }
 
-# Create container registry
+  provisioner "local-exec" {
+    environment = {
+      aks_name  = azurerm_kubernetes_cluster.main.name
+      rg_name   = var.rg.name
+      user_name = "clusterUser_${var.rg.name}_${azurerm_kubernetes_cluster.main.name}"
+    }
+    command = "az aks get-credentials -g $rg_name --name $aks_name"
+  }
+
+  provisioner "local-exec" {
+    when        = destroy
+    command     = "kubectl config delete-context $aks_name"
+  }
+  provisioner "local-exec" {
+    when        = destroy
+    command     = "kubectl config delete-cluster $aks_name"
+  }
+  provisioner "local-exec" {
+    when        = destroy
+    #command     = "kubectl config delete-user clusterUser_${rg_name}_${aks_name}"
+    command     = "kubectl config delete-user $user_name"
+  }
+}
+
+/*
+# Create container registry - MOVED to acr module
 resource "azurerm_container_registry" "acr" {
   name                              = var.aks_dynamic.acr_name
   resource_group_name               = var.rg.name
@@ -58,7 +88,7 @@ resource "azurerm_container_registry" "acr" {
   depends_on                        = [azurerm_kubernetes_cluster.main]
 }
 
-# Attach container registry to AKS cluster
+# Attach container registry to AKS cluster - MOVED to acr module
 resource "azurerm_role_assignment" "main" {
   principal_id                      = azurerm_kubernetes_cluster.main.kubelet_identity[0].object_id
   role_definition_name              = "AcrPull"
@@ -66,28 +96,6 @@ resource "azurerm_role_assignment" "main" {
   skip_service_principal_aad_check  = true
 }
 
-
-# Create or Update ~/.kube/config
-resource "null_resource" "update_kubeconfig" {
-  triggers = {
-    aks_name    = azurerm_kubernetes_cluster.main.name
-  }
-
-  provisioner "local-exec" {
-    environment = {
-      aks_name  = azurerm_kubernetes_cluster.main.name
-      rg_name   = var.rg.name
-    }
-    command = "az aks get-credentials -g $rg_name --name $aks_name"
-  }
-
-  provisioner "local-exec" {
-    when        = destroy
-    command     = "kubectl config delete-context $aks_name"
-  }
-}
-
-/*
 # Create cluster outbound IP
 resource "azurerm_public_ip" "aks_pub_ip" {
   name                              = format("${var.aks_dynamic.prefix}-mgmt")
